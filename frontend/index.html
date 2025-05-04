@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seinfeld Episode Finder</title>
+    <link href="./styles.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-base-200">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-xl mx-auto">
+            <h1 class="text-4xl font-bold text-center mb-8">Seinfeld Episode Finder</h1>
+            
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <form id="searchForm" class="space-y-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Scene Description</span>
+                            </label>
+                            <textarea id="description" class="textarea textarea-bordered h-24" placeholder="Describe the Seinfeld scene you remember (e.g., 'the one where Jerry loses his car in the parking garage')..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Find Episode</button>
+                    </form>
+                </div>
+            </div>
+            <div id="results" class="mt-8 hidden">
+                <div class="card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title">Results</h2>
+                        <div id="resultsContent" class="whitespace-pre-line space-y-2">
+                            <div class="episode-info"></div>
+                            <div class="rating-info flex items-center gap-2 text-warning hidden">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                                <span class="rating-text"></span>
+                            </div>
+                            <div class="air-date text-sm text-base-content/70 hidden"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="loading" class="mt-8 text-center hidden">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+            <div id="error" class="mt-8 hidden">
+                <div class="alert alert-error">
+                    <span id="errorMessage">Error message here</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="./main.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
