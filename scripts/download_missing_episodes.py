@@ -27,39 +27,21 @@ DELAY = 1  # Delay between requests
 
 # Previously missing episodes with corrected URLs
 MISSING_EPISODES = [
-    # Season 3 - "The Pimple" was incorrect, should be "The Pez Dispenser"
-    ("Season 3", "The Pez Dispenser", "ThePezDispenser.htm"),
-    ("Season 3", "The Pez Dispenser", "ThePezDispenser.html"),
-    
-    # Season 4 - "The Show" was incorrect, should be "The Movie"
-    ("Season 4", "The Movie", "TheMovie.htm"),
-    ("Season 4", "The Movie", "TheMovie.html"),
-    
-    # Season 4 - "The Handlebar" was incorrect, should be "The Old Man"
-    ("Season 4", "The Old Man", "TheOldMan.htm"),
-    ("Season 4", "The Old Man", "TheOldMan.html"),
-    
-    # Season 6 - Special episode "Highlights of 100"
-    ("Season 6", "Highlights of a Hundred", "TheHighlightsofaHundred.htm"),
-    ("Season 6", "Highlights of a Hundred", "The-Clip-Show-1.html"),
-    
-    # Season 6 - "The Dip" was incorrect, should be "The Diplomat's Club"
-    ("Season 6", "The Diplomat's Club", "TheDiplomatClub.htm"),
-    ("Season 6", "The Diplomat's Club", "TheDiplomatClub.html"),
-    
-    # Season 7 - Additional variations for The Cadillac
-    ("Season 7", "The Cadillac (Part 1)", "TheCadillac1.html"),
-    ("Season 7", "The Cadillac (Part 1)", "TheCadillac1.htm"),
-    ("Season 7", "The Cadillac (Part 2)", "TheCadillac2.html"),
-    ("Season 7", "The Cadillac (Part 2)", "TheCadillac2.htm"),
-    
-    # Season 6 - The Switch
-    ("Season 6", "The Switch", "TheSwitch.htm"),
-    ("Season 6", "The Switch", "TheSwitch.html"),
-    
-    # Season 6 - The Fusilli Jerry
-    ("Season 6", "The Fusilli Jerry", "TheFusilliJerry.htm"),
-    ("Season 6", "The Fusilli Jerry", "TheFusilliJerry.html")
+    ("Season 3", "The Stranded", "TheStranded.html"),
+    ("Season 4", "The Pitch", "ThePitch.htm"),
+    ("Season 4", "The Ticket", "TheTicket.html"),
+    ("Season 4", "The Wallet", "TheWallet.html"),
+    ("Season 4", "The Watch", "TheWatch.html"),
+    ("Season 4", "The Bubble Boy", "TheBubbleBoy.htm"),
+    ("Season 4", "The Cheever Letters", "TheCheeverLetters.htm"),
+    ("Season 4", "The Opera", "TheOpera.html"),
+    ("Season 4", "The Visa", "TheVisa.html"),
+    ("Season 4", "The Handicap Spot", "TheHandicapSpot.html"),
+    ("Season 4", "The Pilot (1)", "ThePilot.html"),
+    ("Season 4", "The Pilot (2)", "ThePilot2.html"),
+    ("Season 6", "The Secretary", "TheSecretary.html"),
+    ("Season 7", "The Seven", "TheSeven.html"),
+    ("Season 8", "The Susie", "TheSuzie.htm"),
 ]
 
 def sanitize_filename(filename):

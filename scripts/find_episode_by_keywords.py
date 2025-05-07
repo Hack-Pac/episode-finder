@@ -195,11 +195,16 @@ def find_episodes_by_keywords(keywords_str, max_results=5):
         if match:
             season_num = match.group(1)
             episode_name = match.group(2)
-            
-            # Get IMDb rating if available
+              # Get IMDb rating if available
             try:
                 rating_info = get_rating(season_num, episode_name)
-            except:
+                if not rating_info:
+                    # Try without parentheses for episodes like "The Cadillac (Part 1)"
+                    base_name = episode_name.split('(')[0].strip()
+                    if base_name != episode_name:
+                        rating_info = get_rating(season_num, base_name)
+            except Exception as e:
+                logger.debug(f"Error fetching rating: {e}")
                 rating_info = None
                   # Create result entry with more detailed match information
             entry = f"Season {season_num} Episode: {episode_name}"
