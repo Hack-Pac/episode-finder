@@ -10,7 +10,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
 class SeinfelderIMDB:
     def __init__(self):
         """init session"""
@@ -32,7 +31,6 @@ class SeinfelderIMDB:
                 f"episode={episode}"
             )
             logger.info(f"Searching: {search_url}")
-            
             #get search results
             response = self.session.get(search_url)
             response.raise_for_status()
@@ -96,7 +94,6 @@ class SeinfelderIMDB:
                 'air_date': str(episode_data.get('original air date', 'Unknown'))
             }
             logger.info(f"Found episode: {result['title']} ({result['rating']}/10)")
-            
             #cache it
             self.episodes_cache[cache_key] = result
             return result
@@ -107,23 +104,19 @@ class SeinfelderIMDB:
         except Exception as e:
             logger.error(f"error getting episode rating: {e}")
             return None
-
 def get_rating(season: int, episode: int) -> Optional[dict]:
     """convenience function to get rating"""
     finder = SeinfelderIMDB()
     return finder.get_episode_rating(season, episode)
-
 if __name__ == "__main__":
     #example usage
     import sys
     if len(sys.argv) != 3:
         print("Usage: python get_imdb_rating.py <season> <episode>")
         sys.exit(1)
-        
     try:
         season = int(sys.argv[1])
         episode = int(sys.argv[2])
-        
         result = get_rating(season, episode)
         if result:
             print(f"\nSeinfeld S{season}E{episode}:")
@@ -136,6 +129,44 @@ if __name__ == "__main__":
     except ValueError:
         print("Season and episode must be numbers")
         sys.exit(1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

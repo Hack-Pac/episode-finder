@@ -38,7 +38,6 @@ def scrape_seinfeld():
             }
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
-            
             #parse html
             soup = BeautifulSoup(response.text, 'html.parser')
             #extract episode descriptions
@@ -73,6 +72,37 @@ if __name__ == "__main__":
         logger.info("scraping interrupted by user")
     except Exception as e:
         logger.error(f"unexpected error: {str(e)}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

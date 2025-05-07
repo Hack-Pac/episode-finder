@@ -12,9 +12,13 @@
     <div class="container mx-auto px-4 py-8">
         <div class="max-w-xl mx-auto">
             <h1 class="text-4xl font-bold text-center mb-8">Seinfeld Episode Finder</h1>
-            
             <div class="card bg-base-100 shadow-xl">
                 <div class="card-body">
+                    <div class="tabs tabs-boxed mb-4">
+                        <a id="tab-description" class="tab tab-active">Description Search</a>
+                        <a id="tab-keywords" class="tab">Keyword Search</a>
+                    </div>
+                    
                     <form id="searchForm" class="space-y-4">
                         <div class="form-control">
                             <label class="label">
@@ -23,6 +27,19 @@
                             <textarea id="description" class="textarea textarea-bordered h-24" placeholder="Describe the Seinfeld scene you remember (e.g., 'the one where Jerry loses his car in the parking garage')..." required></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary w-full">Find Episode</button>
+                    </form>
+                    
+                    <form id="keywordForm" class="space-y-4 hidden">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Enter Keywords</span>
+                            </label>
+                            <input id="keywords" class="input input-bordered" placeholder="Enter keywords separated by commas (e.g., 'marble rye, fishing rod')" required />
+                            <label class="label">
+                                <span class="label-text-alt">Enter specific words or phrases that appear in the episode</span>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Search by Keywords</button>
                     </form>
                 </div>
             </div>
@@ -57,6 +74,52 @@
     <script src="./main.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

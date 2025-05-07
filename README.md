@@ -75,3 +75,6 @@ python scripts/get_imdb_rating.py <season> <episode>
 - Internet connection for IMDb lookups
 - Modern web browser
 
+
+
+

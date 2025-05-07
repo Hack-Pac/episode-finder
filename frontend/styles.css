@@ -1,0 +1,44 @@
+/* Additional styles for Seinfeld Episode Finder */
+
+.container {
+    max-width: 1200px;
+}
+
+.tabs-boxed .tab-active {
+    background-color: hsl(var(--p));
+    color: white;
+}
+
+.episode-info {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.air-date {
+    font-style: italic;
+}
+
+/* Animation for tab transitions */
+.tab {
+    transition: all 0.3s ease;
+}
+
+/* Make the results area look nicer */
+#resultsContent {
+    line-height: 1.6;
+}
+
+/* Keyword search result styling */
+.keyword-stats {
+    margin-top: 0.5rem;
+}
+
+.keyword-stats div {
+    margin-top: 0.25rem;
+}
+
+/* Highlight matched percentages */
+.keyword-stats .font-bold {
+    color: hsl(var(--p));
+}
