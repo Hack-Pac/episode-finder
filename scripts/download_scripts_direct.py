@@ -314,7 +314,6 @@ def extract_script_content(html_content):
         if not line:
             cleaned_lines.append('')
             continue
-            
         # Skip navigation links and copyright notices
         if any(re.search(pattern, line.lower()) for pattern in skip_patterns):
             continue
@@ -367,7 +366,6 @@ def download_and_save_scripts(selected_seasons=None, force_download=False):
                     base_name = sanitize_filename(episode_title)
                     file_name = f"{base_name}.txt"
                     file_path = season_dir / file_name
-                    
                     # Handle duplicate filenames by appending the script file name
                     if episode_title in processed_episodes and not file_path.exists():
                         script_name = script_file.replace('.htm', '').replace('.html', '')
@@ -534,3 +532,21 @@ if __name__ == "__main__":
         logger.info("Script download completed successfully")
     else:
         logger.error("Script download failed")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,520 @@
+#!/usr/bin/env python3
+import logging
+import re
+import json
+from typing import Optional, Dict, Union
+import requests
+from bs4 import BeautifulSoup
+import urllib.parse
+
+#setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Seinfeld IMDb ID
+SEINFELD_IMDB_ID = "tt0098904"
+
+class SeinfelderIMDB:
+    def __init__(self):
+        """init session"""
+        self.session = requests.Session()
+        #set a normal browser user agent
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        })
+        self.episodes_cache: Dict[tuple, dict] = {}
+          def _try_api_method(self, season: Union[int, str], episode_name: Union[int, str]) -> Optional[dict]:
+        """Try to get episode data from IMDb API if available"""
+        try:
+            # Use a more direct approach with potential API endpoints
+            if isinstance(season, str) and season.isdigit():
+                season = int(season)
+                
+            # Use IMDb's graphql API if available
+            url = "https://www.imdb.com/graphql"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Content-Type': 'application/json',
+                'Referer': f'https://www.imdb.com/title/{SEINFELD_IMDB_ID}/episodes/',
+            }
+            
+            # Prepare the query - specific to the episode if name is numeric
+            variables = {
+                "titleId": SEINFELD_IMDB_ID,
+                "seasonNumber": season,
+                "first": 50  # Get up to 50 episodes
+            }
+            
+            # Simple GraphQL query to get episode data
+            query = """
+            query Episodes($titleId: ID!, $seasonNumber: Int!, $first: Int!) {
+                title(id: $titleId) {
+                    episodes(season: $seasonNumber, first: $first) {
+                        edges {
+                            node {
+                                titleText {
+                                    text
+                                }
+                                plot {
+                                    plotText {
+                                        plainText
+                                    }
+                                }
+                                releaseDate {
+                                    day
+                                    month
+                                    year
+                                }
+                                runtime {
+                                    seconds
+                                }
+                                ratingsSummary {
+                                    aggregateRating
+                                    voteCount
+                                }
+                                primaryImage {
+                                    url
+                                }
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+            """
+            
+            payload = {
+                "operationName": "Episodes",
+                "variables": variables,
+                "query": query
+            }
+            
+            logger.info(f"Attempting GraphQL API call for season {season}")
+            response = self.session.post(url, json=payload)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "data" in data and "title" in data["data"] and "episodes" in data["data"]["title"]:
+                    episodes = data["data"]["title"]["episodes"]["edges"]
+                    if episodes:
+                        # Find the right episode
+                        target_episode = None
+                        if isinstance(episode_name, int) or (isinstance(episode_name, str) and episode_name.isdigit()):
+                            # Handle numeric episode number
+                            ep_num = int(episode_name)
+                            if 0 < ep_num <= len(episodes):
+                                target_episode = episodes[ep_num - 1]["node"]
+                        else:
+                            # Try to find by title
+                            for edge in episodes:
+                                node = edge["node"]
+                                if "titleText" in node and "text" in node["titleText"]:
+                                    if episode_name.lower() in node["titleText"]["text"].lower():
+                                        target_episode = node
+                                        break
+                        
+                        if target_episode:
+                            # Format the output
+                            episode_info = {
+                                "title": target_episode.get("titleText", {}).get("text", "Unknown"),
+                                "rating": str(target_episode.get("ratingsSummary", {}).get("aggregateRating", "N/A")),
+                                "votes": str(target_episode.get("ratingsSummary", {}).get("voteCount", 0)),
+                                "image_url": target_episode.get("primaryImage", {}).get("url"),
+                                "imdb_url": f"https://www.imdb.com/title/{target_episode.get('id')}/",
+                                "episode_num": episodes.index(edge) + 1,
+                                "season_num": season
+                            }
+                            
+                            # Build the air date
+                            date_parts = []
+                            if "releaseDate" in target_episode:
+                                rd = target_episode["releaseDate"]
+                                if "day" in rd: date_parts.append(str(rd["day"]))
+                                if "month" in rd: date_parts.append(str(rd["month"]))
+                                if "year" in rd: date_parts.append(str(rd["year"]))
+                            
+                            episode_info["air_date"] = " ".join(date_parts) if date_parts else "Unknown"
+                            logger.info(f"Found episode via GraphQL API: {episode_info['title']}")
+                            return episode_info
+            
+            logger.info("GraphQL API method failed, falling back to HTML parsing")
+            return None
+        except Exception as e:
+            logger.warning(f"GraphQL API method failed: {str(e)}")
+            return None
+    
+    def _get_episode(self, season: Union[int, str], episode_name: Union[int, str]) -> Optional[dict]:
+        """Get episode details using a more reliable method"""
+        try:
+            # First try the API method as it's potentially more reliable
+            api_result = self._try_api_method(season, episode_name)
+            if api_result:
+                return api_result
+                
+            # Convert season to int if it's a string with a number
+            if isinstance(season, str) and season.isdigit():
+                season = int(season)
+                
+            # Step 1: Get the season page to find episode list
+            season_url = f"https://www.imdb.com/title/{SEINFELD_IMDB_ID}/episodes?season={season}"
+            logger.info(f"Fetching season data from: {season_url}")
+            
+            response = self.session.get(season_url)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Look for the script tag containing episode data
+            episode_data = None
+            scripts = soup.find_all('script')
+            for script in scripts:
+                if script.string and 'window.__INITIAL_STATE__' in script.string:
+                    # Extract the JSON data
+                    json_str = script.string.split('=', 1)[1].strip().rstrip(';')
+                    try:
+                        data = json.loads(json_str)
+                        if 'episodes' in json_str and 'title' in json_str:
+                            episode_data = data
+                            break
+                    except json.JSONDecodeError:
+                        continue
+              if not episode_data:
+                logger.warning(f"Could not find episode data for season {season}")
+                # Fallback to traditional scraping with updated selectors
+                # Try multiple potential selectors that IMDb might be using
+                episode_blocks = soup.select('div.list_item') or soup.select('div.episode-item') or soup.select('article.episode-container')
+                if not episode_blocks:
+                    # Try alternative selectors to find the episode blocks
+                    episode_blocks = soup.select('div[data-testid="episodes-browse-episodes"] > div') or soup.select('.eplist > div')
+                
+                if not episode_blocks:
+                    logger.error(f"No episodes found for season {season}")
+                    logger.debug(f"HTML snippet: {soup.prettify()[:1000]}")
+                    return None
+                    
+                # Try to match by episode name
+                target_episode = None
+                if isinstance(episode_name, str):
+                    episode_title = episode_name.lower()
+                    for ep_block in episode_blocks:
+                        title_elem = ep_block.select_one('a[itemprop="name"]')
+                        if title_elem and episode_title in title_elem.text.lower():
+                            target_episode = ep_block
+                            break
+                
+                # If not found by name, try the first episode as last resort
+                if not target_episode:
+                    target_episode = episode_blocks[0]
+                    logger.warning(f"Using first episode of season {season} as fallback")
+                  # Extract episode information from HTML - using multiple potential selectors
+                # Try multiple selectors for title to handle different IMDb layouts
+                title_elem = (target_episode.select_one('a[itemprop="name"]') or 
+                              target_episode.select_one('a.ipc-title-link-wrapper') or
+                              target_episode.select_one('h4') or
+                              target_episode.select_one('a[data-testid="title"]'))
+                episode_title = title_elem.text.strip() if title_elem else "Unknown Episode"
+                
+                # Get episode URL
+                episode_url = None
+                if title_elem and title_elem.has_attr('href'):
+                    episode_url = f"https://www.imdb.com{title_elem['href']}"
+                
+                # Get image - try multiple selectors for images
+                image_elem = (target_episode.select_one('img.zero-z-index') or 
+                              target_episode.select_one('img.ipc-image') or
+                              target_episode.select_one('img'))
+                image_url = None
+                if image_elem:
+                    # Try different attributes where the image URL might be stored
+                    for attr in ['src', 'data-src', 'srcset']:
+                        if image_elem.has_attr(attr):
+                            img_src = image_elem[attr]
+                            # If srcset, take the first URL
+                            if ' ' in img_src:
+                                img_src = img_src.split(' ')[0]
+                            image_url = img_src
+                            break
+                            
+                    # Clean up the URL to get a larger image
+                    if image_url and '_V1_' in image_url:
+                        image_url = re.sub(r'_V1_.*?\.jpg', '_V1_SX300.jpg', image_url)
+                
+                # Get rating - try multiple selectors
+                rating_elem = (target_episode.select_one('span.ipl-rating-star__rating') or 
+                              target_episode.select_one('span.imdb-rating') or
+                              target_episode.select_one('span[data-testid="rating"]') or
+                              target_episode.select_one('.ipc-rating-star'))
+                rating = 'N/A'
+                if rating_elem:
+                    # Extract text content or try data attribute
+                    rating = rating_elem.text.strip() if rating_elem.text.strip() else rating_elem.get('aria-label', 'N/A')
+                    # If rating includes "/10" or other text, try to extract just the number
+                    if '/' in rating:
+                        rating = rating.split('/')[0].strip()
+                
+                # Get votes - try multiple selectors
+                votes_elem = (target_episode.select_one('span.ipl-rating-star__total-votes') or
+                             target_episode.select_one('span.rating-votes') or
+                             target_episode.select_one('div[data-testid="rating-count"]'))
+                votes = votes_elem.text.strip('()') if votes_elem else '0'
+                # Clean up votes if it contains commas or other formatting
+                votes = re.sub(r'[^\d]', '', votes) if votes else '0'
+                
+                # Get air date
+                airdate_elem = target_episode.select_one('div.airdate')
+                air_date = airdate_elem.text.strip() if airdate_elem else "Unknown"
+                
+                # Get episode number
+                ep_num = 1
+                ep_num_div = target_episode.select_one('div.hover-over-image div')
+                if ep_num_div and ep_num_div.text.strip():
+                    try:
+                        ep_num = int(ep_num_div.text.strip())
+                    except ValueError:
+                        pass
+                
+                episode_info = {
+                    'title': episode_title,
+                    'rating': rating,
+                    'votes': votes,
+                    'air_date': air_date,
+                    'image_url': image_url,
+                    'imdb_url': episode_url,
+                    'episode_num': ep_num,
+                    'season_num': season
+                }
+                
+                logger.info(f"Found episode via HTML: {episode_title} with rating {rating}")
+                return episode_info
+            
+            # Process JSON data if available
+            # Try to find the matching episode
+            episodes_list = None
+            for key, value in episode_data.items():
+                if isinstance(value, dict) and 'episodes' in value and isinstance(value['episodes'], dict):
+                    for season_key, season_data in value['episodes'].items():
+                        if isinstance(season_data, dict) and 'episodes' in season_data:
+                            if int(season_key) == int(season):
+                                episodes_list = season_data['episodes']
+                                break
+                    if episodes_list:
+                        break
+            
+            if not episodes_list:
+                logger.warning(f"Could not find episodes list in JSON for season {season}")
+                return None
+            
+            # Find the target episode
+            target_episode_data = None
+            for ep in episodes_list:
+                # If episode_name is a number, match by episode number
+                if isinstance(episode_name, int) or (isinstance(episode_name, str) and episode_name.isdigit()):
+                    if ep.get('number') == int(episode_name):
+                        target_episode_data = ep
+                        break
+                # Otherwise match by title
+                elif isinstance(episode_name, str) and 'titleText' in ep:
+                    if episode_name.lower() in ep['titleText'].get('text', '').lower():
+                        target_episode_data = ep
+                        break
+            
+            # If nothing found, just use the first episode
+            if not target_episode_data and episodes_list:
+                target_episode_data = episodes_list[0]
+                logger.warning(f"Using first episode as fallback: {target_episode_data.get('titleText', {}).get('text')}")
+            
+            if not target_episode_data:
+                logger.error(f"No suitable episode found in JSON data")
+                return None
+            
+            # Extract the information we need
+            episode_title = target_episode_data.get('titleText', {}).get('text', 'Unknown')
+            episode_id = target_episode_data.get('id')
+            episode_num = target_episode_data.get('number', 1)
+            image_data = target_episode_data.get('primaryImage', {})
+            image_url = image_data.get('url') if image_data else None
+            
+            # Format image URL for larger size
+            if image_url and '_V1_' in image_url:
+                image_url = re.sub(r'_V1_.*?\.jpg', '_V1_SX300.jpg', image_url)
+            
+            rating_data = target_episode_data.get('ratingsSummary', {})
+            rating = rating_data.get('aggregateRating', 'N/A')
+            votes = rating_data.get('voteCount', '0')
+            
+            # Extract air date
+            air_date = "Unknown"
+            if 'releaseDate' in target_episode_data:
+                date_parts = []
+                release_date = target_episode_data['releaseDate']
+                if 'day' in release_date:
+                    date_parts.append(str(release_date['day']))
+                if 'month' in release_date:
+                    date_parts.append(str(release_date['month']))
+                if 'year' in release_date:
+                    date_parts.append(str(release_date['year']))
+                if date_parts:
+                    air_date = ' '.join(date_parts)
+            
+            # Construct IMDb URL
+            imdb_url = f"https://www.imdb.com/title/{episode_id}/" if episode_id else None
+            
+            episode_info = {
+                'title': episode_title,
+                'rating': str(rating),
+                'votes': str(votes),
+                'air_date': air_date,
+                'image_url': image_url,
+                'imdb_url': imdb_url,
+                'episode_num': episode_num,
+                'season_num': int(season)
+            }
+            
+            logger.info(f"Found episode via JSON: {episode_title} with rating {rating}")
+            return episode_info
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch episode data: {e}")
+            return None
+            
+    def get_episode_rating(self, season: Union[int, str], episode: Union[int, str]) -> Optional[dict]:
+        """get rating for specific episode"""
+        try:
+            #check cache first
+            cache_key = (str(season), str(episode))
+            if cache_key in self.episodes_cache:
+                return self.episodes_cache[cache_key]
+            
+            #get episode data
+            episode_data = self._get_episode(season, episode)
+            if not episode_data:
+                return None
+            
+            #format response
+            result = {
+                'title': episode_data.get('title', 'Unknown'),
+                'rating': episode_data.get('rating', 'N/A'),
+                'votes': episode_data.get('votes', 0),
+                'season': episode_data.get('season_num', season),
+                'episode': episode_data.get('episode_num', episode),
+                'air_date': str(episode_data.get('air_date', 'Unknown')),
+                'image_url': episode_data.get('image_url', None),
+                'imdb_url': episode_data.get('imdb_url', None)
+            }
+            
+            logger.info(f"Found episode: {result['title']} ({result['rating']}/10)")
+            #cache it
+            self.episodes_cache[cache_key] = result
+            return result
+        except KeyError:
+            logger.error(f"episode S{season}E{episode} not found")
+            return None
+        except Exception as e:
+            logger.error(f"error getting episode rating: {e}")
+            return None
+
+def get_rating(season: Union[int, str], episode: Union[int, str]) -> Optional[dict]:
+    """convenience function to get rating"""
+    finder = SeinfelderIMDB()
+    return finder.get_episode_rating(season, episode)
+
+if __name__ == "__main__":
+    #example usage
+    import sys
+    if len(sys.argv) != 3:
+        print("Usage: python get_imdb_rating.py <season> <episode>")
+        sys.exit(1)
+    try:
+        season = sys.argv[1]  # Can be string or int
+        episode = sys.argv[2]  # Can be string or int
+        result = get_rating(season, episode)
+        if result:
+            print(f"\nSeinfeld S{result['season']}E{result['episode']}:")
+            print(f"Title: {result['title']}")
+            print(f"Rating: {result['rating']}/10 ({result['votes']} votes)")
+            print(f"Air Date: {result['air_date']}")
+            if result.get('image_url'):
+                print(f"Image: {result['image_url']}")
+            if result.get('imdb_url'):
+                print(f"IMDb: {result['imdb_url']}")
+        else:
+            print(f"\nFailed to get rating for S{season}E{episode}")
+            
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

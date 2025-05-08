@@ -79,7 +79,6 @@ def check_all_episodes():
                 # Check if URL is valid (with a small delay to avoid rate limiting)
                 status_code, exists = get_page_status(url)
                 time.sleep(0.5)  # Delay between requests
-                
                 if exists:
                     valid_season_episodes.append((script_file, episode_title))
                     logger.debug(f"Valid URL: {url}")
@@ -88,7 +87,6 @@ def check_all_episodes():
                     logger.debug(f"Invalid URL: {url} (Status: {status_code})")
                 
                 pbar.update(1)
-            
             # Add season to valid episodes if it has any valid episodes
             if valid_season_episodes:
                 valid_episodes.append((season_name, valid_season_episodes))
@@ -121,7 +119,6 @@ def check_all_episodes():
     print(f"\nDetailed report saved to {REPORT_FILE}")
     
     return valid_episodes, invalid_urls
-
 def search_alternative_urls(episode_title, season):
     """Search for alternative URLs for a given episode title"""
     # This is a placeholder - in a real implementation, this would:
@@ -149,3 +146,25 @@ if __name__ == "__main__":
         # This would be implemented in a full solution
         logger.info("Searching for alternative URLs for invalid episodes")
         print("\nThis feature is not yet implemented.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

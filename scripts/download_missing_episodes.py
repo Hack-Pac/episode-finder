@@ -91,7 +91,6 @@ def extract_script_content(html_content):
         if candidate:
             content = candidate
             break
-            
     if not content:
         return "Could not find script content"
     
@@ -134,7 +133,6 @@ def download_missing_scripts():
         # Create season directory
         season_dir = OUTPUT_DIR / sanitize_filename(season_name)
         create_directory(season_dir)
-        
         # Build URL and filename
         url = urllib.parse.urljoin(BASE_URL, script_file)
         file_name = f"{sanitize_filename(episode_title)}.txt"
@@ -148,7 +146,6 @@ def download_missing_scripts():
             logger.error(f"Failed to download {episode_title}")
             failed.append((season_name, episode_title, url))
             continue
-            
         # Extract script content
         script_content = extract_script_content(html_content)
         
@@ -202,3 +199,20 @@ if __name__ == "__main__":
         logger.error(f"Unhandled exception: {e}")
         traceback.print_exc()
         sys.exit(1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

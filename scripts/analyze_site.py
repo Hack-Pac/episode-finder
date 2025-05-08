@@ -54,7 +54,6 @@ def analyze_html_structure():
                 all_links.append((href, text))
                 f.write(f"{text} => {href}\n")
         f.write(f"\nTotal links found: {len(all_links)}\n\n")
-        
         # 3. Table structure analysis - which seems to be where the content is
         f.write("=== TABLE STRUCTURE ===\n")
         tables = soup.find_all('table')
@@ -72,7 +71,6 @@ def analyze_html_structure():
                 for cell in cells:
                     cell_content = cell.get_text().strip().replace('\n', ' ')[:50]  # First 50 chars
                     f.write(f"  Cell content: {cell_content}...\n")
-                    
                     # Extract links in this cell
                     cell_links = cell.find_all('a')
                     for link in cell_links:
@@ -85,7 +83,19 @@ def analyze_html_structure():
     
     logger.info(f"Analysis completed and saved to {OUTPUT_ANALYSIS}")
     return True
-
 if __name__ == "__main__":
     logger.info("Starting Seinfeld website HTML analysis")
     analyze_html_structure()
+
+
+
+
+
+
+
+
+
+
+
+
+

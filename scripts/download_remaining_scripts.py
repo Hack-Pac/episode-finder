@@ -265,7 +265,6 @@ def get_script_content(url):
             headers = get_random_headers()
             response = requests.get(url, headers=headers, timeout=30)
             response.raise_for_status()
-            
             # Return content if successful
             return response.text
         except requests.exceptions.RequestException as e:
@@ -362,7 +361,6 @@ def download_missing_episodes():
         for url_path in episode["urls"]:
             if episode_found:
                 break
-                
             url = urllib.parse.urljoin(BASE_URL, url_path)
             logger.info(f"Trying URL: {url} for '{episode_name}'")
             
@@ -518,7 +516,6 @@ def check_episode_status():
     print(f"\nStill missing: {len(status['missing'])}")
     for ep in status["missing"]:
         print(f"- {ep['name']} ({ep['season']})")
-    
     return status
 
 def main():
@@ -536,3 +533,18 @@ def main():
     
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

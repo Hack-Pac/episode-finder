@@ -64,7 +64,6 @@ url_variations = [
     "TheSusy.htm",
     "TheSusy.html"
 ]
-
 def get_random_headers():
     """Generate random headers for requests to avoid being blocked"""
     user_agent = random.choice(USER_AGENTS)
@@ -136,7 +135,6 @@ def clean_script_content(html_content, url):
         line = line.strip()
         if line and (not cleaned_lines or line not in cleaned_lines[-3:]):  # Avoid very recent duplicates
             cleaned_lines.append(line)
-    
     # Join and clean final output
     cleaned_text = '\n'.join(cleaned_lines)
     cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)  # Replace 3+ consecutive newlines with 2
@@ -208,3 +206,17 @@ def main():
 if __name__ == "__main__":
     success = main()
     exit(0 if success else 1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+

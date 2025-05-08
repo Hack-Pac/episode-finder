@@ -38,7 +38,6 @@ def load_script_files():
     Returns a dictionary with episode info as keys and file paths as values
     """
     script_files = {}
-    
     # Check if scripts directory exists
     if not SCRIPTS_DIR.exists():
         logger.error(f"Scripts directory not found: {SCRIPTS_DIR}")
@@ -71,15 +70,16 @@ def preprocess_text(text):
     """
     # Convert to lowercase
     text = text.lower()
-    
     # Remove punctuation
     translator = str.maketrans('', '', string.punctuation)
     text = text.translate(translator)
-    
     # Remove extra whitespace
     text = re.sub(r'\s+', ' ', text).strip()
-    
     return text
+
+def tokenize(text):
+    """Tokenize preprocessed text into a list of words"""
+    return text.split()
 
 def parse_keywords(keywords_str):
     """
@@ -104,61 +104,45 @@ def find_episodes_by_keywords(keywords_str, max_results=5):
     Returns:
         list: List of dictionaries with episode info and scores
     """
-    # Parse keywords
+    # Parse and preprocess keywords
     keywords = parse_keywords(keywords_str)
     if not keywords:
         logger.warning("No valid keywords provided")
         return []
-        
     logger.info(f"Searching for keywords: {', '.join(keywords)}")
-    
+
+    # Tokenize keywords for set operations
+    keyword_set = set(keywords)
+
     # Load script files
     script_files = load_script_files()
     if not script_files:
         logger.error("No script files found")
         return []
-    
-    # Results will store episode_key -> {score, keyword_counts}
+
     results = {}
-    
-    # Process each script file
+
     for episode_key, script_path in tqdm(script_files.items(), desc="Searching episodes"):
         try:
-            # Read script content
             with open(script_path, 'r', encoding='utf-8') as f:
                 script_content = f.read()
-            
-            # Preprocess content for better matching
             processed_content = preprocess_text(script_content)
-            
-            # Count keyword occurrences
-            keyword_counts = {}
-            for keyword in keywords:
-                # Case-insensitive count (content is already lowercase)
-                count = processed_content.count(keyword.lower())
-                if count > 0:
-                    keyword_counts[keyword] = count
-              # Calculate score based on keyword matches
-            # New scoring algorithm prioritizes matching multiple keywords:
-            # - Base score from keyword occurrences
-            # - Significant bonus for each unique keyword matched
-            # - Bonus for matching higher percentage of all keywords
-            
-            # Base score from occurrences
-            base_score = sum(count * len(keyword) for keyword, count in keyword_counts.items())
-            
-            # Calculate keyword diversity score - emphasize matching multiple different keywords
-            unique_keywords_matched = len(keyword_counts)
-            keyword_diversity_bonus = unique_keywords_matched * 100  # Significant bonus per unique keyword
-            
-            # Calculate coverage score - percentage of provided keywords that were matched
-            coverage_ratio = unique_keywords_matched / len(keywords)
-            coverage_bonus = int(coverage_ratio * 200)  # Up to 200 points for matching all keywords
-            
-            # Combine scores with proper weighting
+            tokens = tokenize(processed_content)
+            token_counts = Counter(tokens)
+            script_token_set = set(tokens)
+
+            # Find which keywords are present (set intersection)
+            matched_keywords = keyword_set & script_token_set
+            unique_keywords_matched = len(matched_keywords)
+            keyword_counts = {k: token_counts[k] for k in matched_keywords}
+
+            # Score: prioritize number of unique keywords matched, then frequency
+            base_score = sum(keyword_counts.values())
+            keyword_diversity_bonus = unique_keywords_matched * 100
+            coverage_ratio = unique_keywords_matched / len(keyword_set)
+            coverage_bonus = int(coverage_ratio * 200)
             total_score = base_score + keyword_diversity_bonus + coverage_bonus
-            
-            # If any keywords matched, add to results
+
             if total_score > 0:
                 results[episode_key] = {
                     "episode": episode_key,
@@ -166,66 +150,54 @@ def find_episodes_by_keywords(keywords_str, max_results=5):
                     "base_score": base_score,
                     "keyword_counts": keyword_counts,
                     "matched_keywords": unique_keywords_matched,
-                    "total_keywords": len(keywords),
+                    "total_keywords": len(keyword_set),
                     "keywords_coverage": f"{coverage_ratio:.1%}",
                     "script_path": str(script_path)
                 }
-                
         except Exception as e:
             logger.error(f"Error processing {script_path}: {e}")
-      # Sort results with new priorities:
-    # 1. First by number of matched keywords (most important)
-    # 2. Then by total score (for episodes matching same number of keywords)
+
     sorted_results = sorted(
         results.values(),
         key=lambda x: (x["matched_keywords"], x["score"]),
         reverse=True
     )
-    
-    # Return top results
     top_results = sorted_results[:max_results]
-    
-    # Format the top results
     formatted_results = []
     for result in top_results:
         episode_key = result["episode"]
-        
-        # Extract season and episode name
         match = re.match(r"Season (\d+): (.*)", episode_key)
         if match:
             season_num = match.group(1)
             episode_name = match.group(2)
-              # Get IMDb rating if available
             try:
                 rating_info = get_rating(season_num, episode_name)
                 if not rating_info:
-                    # Try without parentheses for episodes like "The Cadillac (Part 1)"
                     base_name = episode_name.split('(')[0].strip()
                     if base_name != episode_name:
                         rating_info = get_rating(season_num, base_name)
             except Exception as e:
                 logger.debug(f"Error fetching rating: {e}")
                 rating_info = None
-                  # Create result entry with more detailed match information
             entry = f"Season {season_num} Episode: {episode_name}"
-            
-            # Add keyword match statistics
             matched_count = result["matched_keywords"]
             total_count = result["total_keywords"]
             coverage = result["keywords_coverage"]
-            
             entry += f"\nMatched {matched_count}/{total_count} keywords ({coverage} coverage)"
-            
-            # Add matched keywords info with their counts
             keyword_info = ", ".join([f"{k} ({v})" for k, v in result["keyword_counts"].items()])
             entry += f"\nKeywords found: {keyword_info}"
-            
-            # Add rating if available
-            if rating_info and "rating" in rating_info and "votes" in rating_info:
-                entry += f"\nIMDb Rating: {rating_info['rating']}/10 ({rating_info['votes']} votes)"
-                
+            if rating_info:
+                if "rating" in rating_info and "votes" in rating_info:
+                    entry += f"\nIMDb Rating: {rating_info['rating']}/10 ({rating_info['votes']} votes)"
+                if "air_date" in rating_info and rating_info["air_date"] and rating_info["air_date"] != "Unknown":
+                    entry += f"\nAir Date: {rating_info['air_date']}"
+                if "description" in rating_info and rating_info["description"] and rating_info["description"] != "N/A":
+                    entry += f"\nDescription: {rating_info['description']}"
+                if "image_url" in rating_info and rating_info["image_url"]:
+                    entry += f"\nIMDb Image: {rating_info['image_url']}"
+                if "imdb_url" in rating_info and rating_info["imdb_url"]:
+                    entry += f"\nIMDb URL: {rating_info['imdb_url']}"
             formatted_results.append(entry)
-    
     return formatted_results
 
 def main():
@@ -235,9 +207,7 @@ def main():
     parser = argparse.ArgumentParser(description='Find Seinfeld episodes by keywords')
     parser.add_argument('keywords', type=str, help='Keywords to search for (comma or space separated)')
     parser.add_argument('--max', type=int, default=TOP_RESULTS, help='Maximum number of results to return')
-    
     args = parser.parse_args()
-    
     results = find_episodes_by_keywords(args.keywords, args.max)
     
     print(f"\nTop {len(results)} episodes matching keywords: {args.keywords}\n")
@@ -247,3 +217,20 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

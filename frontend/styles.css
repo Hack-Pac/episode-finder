@@ -1,5 +1,4 @@
 /* Additional styles for Seinfeld Episode Finder */
-
 .container {
     max-width: 1200px;
 }
@@ -41,4 +40,235 @@
 /* Highlight matched percentages */
 .keyword-stats .font-bold {
     color: hsl(var(--p));
+}
+
+/* Styles for the transparent input container card */
+.card.input-container-transparent {
+    background: none !important; /* Remove any inherited background */
+    background-color: rgba(255, 255, 255, 0.4) !important; /* Semi-transparent white for the card */
+    backdrop-filter: blur(10px); /* Apply blur effect */
+    /* DaisyUI's .card class handles border-radius. Tailwind's .shadow-xl handles shadow. */
+}
+
+/* Ensure card-body within our transparent card doesn't have an conflicting background */
+.card.input-container-transparent .card-body {
+    background: transparent !important;
+}
+
+/* Style for inputs and textareas within the transparent container for better readability */
+.card.input-container-transparent .textarea,
+.card.input-container-transparent .input {
+    background: none !important; /* Remove any inherited background from input classes */
+    background-color: rgba(255, 255, 255, 0.6) !important; /* Inputs slightly more opaque than the card, but still transparent */
+    /* color: #333 !important; */ /* Optional: uncomment to ensure dark text if needed */
+}
+
+/* Style for buttons within the transparent container */
+.card.input-container-transparent .btn {
+    background: none !important; /* Remove any inherited background from btn classes */
+    background-color: rgba(100, 100, 200, 0.2) !important; /* Semi-transparent primary-like color - lowered opacity further */
+    border-color: transparent !important; /* Remove default border or make it transparent */
+    color: white !important; /* Ensure text is readable */
+    /* backdrop-filter: blur(5px); */ /* Removed backdrop-filter */
+}
+
+.card.input-container-transparent .btn:hover {
+    background-color: rgba(100, 100, 200, 0.4) !important; /* Darken on hover - adjusted for new base opacity */
+}
+
+/* Style for buttons within the transparent container */
+.card.input-container-transparent .btn.btn-primary { /* Increased specificity */
+    background: none !important;
+    background-image: none !important; /* Explicitly remove background image */
+    background-color: rgba(100, 100, 200, 0.1) !important; /* Lowered opacity significantly for testing */
+    border-color: transparent !important;
+    color: white !important;
+    backdrop-filter: none !important; /* Ensure no backdrop filter */
+}
+
+.card.input-container-transparent .btn.btn-primary:hover {
+    background-color: rgba(100, 100, 200, 0.3) !important; /* Adjusted hover opacity */
+}
+
+/* Style for buttons within the transparent container */
+.card.input-container-transparent .btn.btn-primary { /* Increased specificity */
+    background: rgba(60, 80, 220, 0.15) !important; /* Force background with RGBA, very low opacity, different blue */
+    border: 1px solid rgba(255, 255, 255, 0.3) !important; /* Subtle border */
+    color: white !important; /* Ensure text is readable */
+    box-shadow: none !important; /* Remove any shadow */
+    background-image: none !important; /* Explicitly remove background image again */
+    backdrop-filter: none !important; /* Ensure no backdrop filter */
+    transition: none !important; /* Disable transitions */
+    
+    /* Attempt to override DaisyUI CSS variables that might set an opaque background */
+    --btn-bg: rgba(60, 80, 220, 0.15) !important; /* DaisyUI button background variable */
+    /* --b1: transparent !important; /* General base background - might be too broad */
+    /* --p: 0 0% 0% / 0; /* Primary color HSL with alpha - complex to set directly to transparent */
+
+}
+
+.card.input-container-transparent .btn.btn-primary:hover {
+    background: rgba(60, 80, 220, 0.35) !important; /* Force hover background with RGBA */
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    /* Attempt to override DaisyUI CSS variables for hover */
+    --btn-hover-bg: rgba(60, 80, 220, 0.35) !important; /* DaisyUI button hover background variable */
+}
+
+/* Styling for the new status and results area within the main card */
+#status-and-results-area {
+    background-color: rgba(0, 0, 0, 0.2) !important; /* Slightly darker transparent background for contrast */
+    border-radius: 0.5rem; /* Match DaisyUI default rounded-lg */
+    /* padding is handled by Tailwind p-4 class in HTML */
+}
+
+/* Ensure text within results is clearly visible */
+#status-and-results-area .episode-info,
+#status-and-results-area .rating-info,
+#status-and-results-area .air-date {
+    color: white !important; /* Ensure high contrast for text */
+}
+
+#status-and-results-area .air-date {
+    color: rgba(255, 255, 255, 0.8) !important; /* Slightly less prominent for secondary info */
+}
+
+/* Make DaisyUI alert transparent within the results area */
+#status-and-results-area .alert {
+    background-color: rgba(255, 0, 0, 0.3) !important; /* Transparent red for errors */
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Styling for the dropdown menu background */
+.card.input-container-transparent .dropdown-content {
+    background-color: rgba(255, 255, 255, 0.3) !important; /* Semi-transparent white for the dropdown menu */
+    backdrop-filter: blur(8px) !important; /* Apply blur effect to the dropdown menu */
+    border-radius: 0.5rem !important; /* Match DaisyUI default rounded-box */
+    /* DaisyUI's .menu might add padding, p-2 is on the ul in HTML, shadow is also on ul */
+}
+
+/* Ensure knockout text for dropdown items works with the new opaque dropdown background */
+.card.input-container-transparent .dropdown-content .knockout-text-li,
+.card.input-container-transparent .dropdown-content .knockout-text-li a { /* Target link if knockout is on li */
+    background-image: url('/static/images/bg.jpeg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    color: transparent !important;
+    background-color: transparent !important; /* Ensure direct background of text element is transparent */
+}
+
+/* Knockout text style for the H1 title inside the card */
+.card.input-container-transparent .card-body h1 {
+    color: transparent !important; /* Make text color transparent */
+    background-image: url('/static/images/bg.jpeg'); /* Same as body background */
+    background-size: cover; /* Ensure it covers the text area */
+    background-position: center; /* Align like body background */
+    background-attachment: fixed; /* Crucial: makes the background appear fixed, like a window to the main page background */
+    -webkit-background-clip: text;
+    background-clip: text;
+    /* text-white class from HTML is overridden by color: transparent */
+}
+
+/* General knockout text style for elements within the card */
+.input-container-transparent .card-body .label .label-text,
+.input-container-transparent .card-body .label .label-text-alt,
+.input-container-transparent .card-body button.btn, /* Target the button for its text */
+.input-container-transparent .card-body #errorMessage, /* Directly target the span */
+.input-container-transparent .card-body #results > h2,
+.input-container-transparent .card-body #resultsContent .episode-info, /* This div will contain text */
+.input-container-transparent .card-body #resultsContent .rating-text,
+.input-container-transparent .card-body #resultsContent .air-date {
+    color: transparent !important;
+    background-image: url('/static/images/bg.jpeg'); /* Path to the main background image */
+    background-attachment: fixed !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    background-size: cover !important; /* Should match body's background-size */
+    background-position: center !important; /* Should match body's background-position */
+    /* Ensure these elements don't have their own background color that would obscure this effect */
+    background-color: transparent !important;
+}
+
+/* Ensure the button's own background is removed/modified to allow page background to show through text */
+.input-container-transparent .card-body button.btn {
+    /* background-color is handled by the rule above to make it transparent for the text clipping. */
+    /* border-color was previously white, let's make it a semi-transparent white for subtlety */
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    /* Text color is transparent due to the rule above. */
+}
+
+/* Ensure the alert container itself is transparent if its text content is knockout */
+.input-container-transparent .card-body #error .alert {
+    background-color: transparent !important; /* Make alert background transparent */
+    border: 1px solid rgba(255, 0, 0, 0.5) !important; /* Optional: subtle error border */
+}
+
+/* Style for SVG icons to prevent them from becoming transparent or knockout */
+.input-container-transparent .card-body svg {
+    /* Prevent knockout styles from affecting SVGs if inherited */
+    background-image: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    /* Restore normal color rendering for SVGs */
+    /* fill and stroke will be set more specifically below or by original classes */
+}
+
+/* Specific color for the error SVG icon */
+.input-container-transparent .card-body #error .alert svg {
+    stroke: #F87171 !important; /* A suitable red color for the error icon stroke */
+    fill: none !important; /* If it was using fill, ensure it's controlled */
+}
+
+/* Specific color for the rating star SVG icon */
+.input-container-transparent .card-body #resultsContent .rating-info svg {
+    fill: #FBBF24 !important; /* Amber color for star */
+    stroke: none !important; /* Assuming stars are filled, not stroked */
+    color: transparent !important; /* Prevent any weird text color inheritance */
+}
+
+/* Ensure placeholder text in input fields is legible if not knockout */
+.input-container-transparent .card-body .input::placeholder {
+    color: rgba(0, 0, 0, 0.6) !important; /* Darker placeholder for visibility on light input bg */
+}
+
+/* Ensure text typed into input fields is legible */
+.input-container-transparent .card-body .input {
+    color: #000000 !important; /* Black text for typed content in inputs */
+}
+
+/* Styles for the episode image */
+.episode-image img {
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    max-width: 100%;
+    height: auto;
+    transition: transform 0.3s ease;
+}
+
+.episode-image img:hover {
+    transform: scale(1.05);
+}
+
+/* Style for IMDb link */
+.imdb-link a {
+    display: inline-block;
+    padding: 0.25rem 1rem;
+    background-color: rgba(245, 197, 24, 0.8); /* IMDb yellow color with transparency */
+    color: black !important;
+    border-radius: 0.25rem;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.imdb-link a:hover {
+    background-color: rgba(245, 197, 24, 1);
+    transform: translateY(-2px);
+}
+
+/* Make sure IMDb link is clearly visible over the background */
+.card.input-container-transparent .imdb-link a {
+    background-clip: padding-box !important;
+    color: black !important;
 }

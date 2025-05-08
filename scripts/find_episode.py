@@ -64,7 +64,6 @@ def find_episode(scene_description, test_mode=False):
             descriptions = load_descriptions()
             if not descriptions:
                 return None
-                
             # Split descriptions into individual entries using blank lines (handles CRLF)
             episode_chunks = re.split(r'\r?\n\s*\r?\n', descriptions.strip())
             # Reduce chunk size to single entry per prompt to stay well under token limit
@@ -119,11 +118,14 @@ Your response: [/INST]"""
                     #get rating info
                     rating_info = get_rating(int(season), int(episode))
                     if rating_info:
-                        enhanced_results.append(
-                            f"{text}\n"
-                            f"IMDb Rating: {rating_info['rating']}/10 ({rating_info['votes']} votes)\n"
-                            f"Original Air Date: {rating_info['air_date']}"
-                        )
+                        result_text = text # Start with the original matched text (Season X Episode Y: Title)
+                        result_text += f"\nIMDb Rating: {rating_info.get('rating', 'N/A')}/10 ({rating_info.get('votes', 'N/A')} votes)"
+                        result_text += f"\nOriginal Air Date: {rating_info.get('air_date', 'N/A')}"
+                        if rating_info.get('image_url'):
+                            result_text += f"\nIMDb Image: {rating_info['image_url']}"
+                        if rating_info.get('imdb_url'):
+                            result_text += f"\nIMDb URL: {rating_info['imdb_url']}"
+                        enhanced_results.append(result_text)
                         break  #just enhance the first match for now
             return enhanced_results[0] if enhanced_results else text
         return text
@@ -139,6 +141,18 @@ if __name__ == "__main__":
         print(result)
     else:
         print("\nFailed to find episodes. Check the logs for details.")
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

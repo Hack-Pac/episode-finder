@@ -1,66 +1,10 @@
 //grab dom elements
-const form = document.getElementById('searchForm')
 const keywordForm = document.getElementById('keywordForm')
-const tabDescription = document.getElementById('tab-description')
-const tabKeywords = document.getElementById('tab-keywords')
 const results = document.getElementById('results')
 const loading = document.getElementById('loading')
 const error = document.getElementById('error')
 const errorMessage = document.getElementById('errorMessage')
 const resultsContent = document.getElementById('resultsContent')
-
-// Tab switching functionality
-tabDescription.addEventListener('click', () => {
-    tabDescription.classList.add('tab-active')
-    tabKeywords.classList.remove('tab-active')
-    form.classList.remove('hidden')
-    keywordForm.classList.add('hidden')
-})
-
-tabKeywords.addEventListener('click', () => {
-    tabKeywords.classList.add('tab-active')
-    tabDescription.classList.remove('tab-active')
-    keywordForm.classList.remove('hidden')
-    form.classList.add('hidden')
-})
-
-//handle form submission
-form.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    
-    //get form data
-    const description = document.getElementById('description').value
-    //reset states
-    results.classList.add('hidden')
-    error.classList.add('hidden')
-    loading.classList.remove('hidden')
-    try {
-        //call backend
-        const response = await fetch('http://localhost:5000/api/search', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                description,
-            }),
-        })
-        
-        const data = await response.json()
-        if (!response.ok) {
-            throw new Error(data.error || 'failed to find episodes')
-        }
-        //show results
-        displayResults(data.results)
-    } catch (err) {
-        //handle errors
-        errorMessage.textContent = err.message
-        error.classList.remove('hidden')
-    } finally {
-        //hide loading
-        loading.classList.add('hidden')
-    }
-})
 
 // Handle keyword form submission
 keywordForm.addEventListener('submit', async (e) => {
@@ -91,7 +35,6 @@ keywordForm.addEventListener('submit', async (e) => {
         if (!response.ok) {
             throw new Error(data.error || 'Failed to find episodes')
         }
-        
         // Show results
         displayResults(data.results)
     } catch (err) {
@@ -103,15 +46,26 @@ keywordForm.addEventListener('submit', async (e) => {
         loading.classList.add('hidden')
     }
 })
-
 // Function to display results (common for both search types)
 function displayResults(resultsText) {
     const episodeInfo = resultsContent.querySelector('.episode-info')
     const ratingInfo = resultsContent.querySelector('.rating-info')
     const airDate = resultsContent.querySelector('.air-date')
-      // Parse result text
-    const lines = resultsText.split('\n')
     
+    // Clear any existing image
+    const existingImage = resultsContent.querySelector('.episode-image')
+    if (existingImage) {
+        existingImage.remove()
+    }
+    
+    // Clear any existing IMDb link
+    const existingLink = resultsContent.querySelector('.imdb-link')
+    if (existingLink) {
+        existingLink.remove()
+    }
+    
+    // Parse result text
+    const lines = resultsText.split('\n')
     // Show episode info
     episodeInfo.textContent = lines[0]  // First line is episode info
     
@@ -121,6 +75,8 @@ function displayResults(resultsText) {
         const airDateLine = lines.find(line => line.includes('Original Air Date:'))
         const keywordMatchLine = lines.find(line => line.includes('Matched'))
         const keywordsFoundLine = lines.find(line => line.includes('Keywords found:'))
+        const imageLine = lines.find(line => line.includes('IMDb Image:'))
+        const imdbUrlLine = lines.find(line => line.includes('IMDb URL:'))
         
         // Handle rating display
         if (ratingLine) {
@@ -128,6 +84,38 @@ function displayResults(resultsText) {
             ratingInfo.querySelector('.rating-text').textContent = ratingLine.replace('IMDb Rating:', '').trim()
         } else {
             ratingInfo.classList.add('hidden')
+        }
+        
+        // Handle image display if available
+        if (imageLine) {
+            const imageUrl = imageLine.replace('IMDb Image:', '').trim()
+            const imageContainer = document.createElement('div')
+            imageContainer.classList.add('episode-image', 'mt-4', 'mb-4', 'flex', 'justify-center')
+            
+            const img = document.createElement('img')
+            img.src = imageUrl
+            img.alt = episodeInfo.textContent
+            img.classList.add('rounded-lg', 'shadow-lg', 'max-h-64')
+            
+            imageContainer.appendChild(img)
+            resultsContent.insertBefore(imageContainer, ratingInfo)
+        }
+        
+        // Handle IMDb link if available
+        if (imdbUrlLine) {
+            const imdbUrl = imdbUrlLine.replace('IMDb URL:', '').trim()
+            const linkContainer = document.createElement('div')
+            linkContainer.classList.add('imdb-link', 'mt-2', 'mb-4', 'text-center')
+            
+            const link = document.createElement('a')
+            link.href = imdbUrl
+            link.target = '_blank'
+            link.rel = 'noopener noreferrer'
+            link.classList.add('text-blue-500', 'hover:underline')
+            link.textContent = 'View on IMDb'
+            
+            linkContainer.appendChild(link)
+            resultsContent.insertBefore(linkContainer, airDate.parentNode.contains(airDate) ? airDate : null)
         }
         
         // Handle additional info display (air date or keywords)
@@ -138,7 +126,6 @@ function displayResults(resultsText) {
             // For keyword search, show match statistics
             const keywordInfo = document.createElement('div')
             keywordInfo.classList.add('keyword-stats')
-            
             // Bold the match statistics
             const matchStats = document.createElement('div')
             matchStats.classList.add('font-bold', 'text-sm')
@@ -152,7 +139,6 @@ function displayResults(resultsText) {
                 keywordDetails.textContent = keywordsFoundLine
                 keywordInfo.appendChild(keywordDetails)
             }
-            
             // Replace airDate content with keyword info
             airDate.classList.remove('hidden')
             airDate.innerHTML = ''
@@ -167,6 +153,46 @@ function displayResults(resultsText) {
     
     results.classList.remove('hidden')
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

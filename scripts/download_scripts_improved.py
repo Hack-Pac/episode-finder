@@ -351,7 +351,6 @@ def extract_script_content(html_content):
     
     # Final cleanup for multi-line breaks
     cleaned_content = re.sub(r'\n{3,}', '\n\n', cleaned_content)
-    
     return cleaned_content.strip()
 
 def try_alternate_extensions(script_file, episode_title):
@@ -390,7 +389,6 @@ def download_and_save_scripts(selected_seasons=None, force_download=False):
     # Track successful URLs for reporting
     successful_urls = []
     failed_urls = []
-    
     with tqdm(total=total_episodes, desc="Downloading scripts") as pbar:
         for season_name, episodes in seasons_to_process:
             # Create season directory
@@ -465,7 +463,6 @@ def download_and_save_scripts(selected_seasons=None, force_download=False):
                         f.write(f"URL: {url}\n")
                         f.write(f"Downloaded: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
                         f.write(script_content)
-                    
                     scripts_downloaded += 1
                     successful_urls.append((season_name, episode_title, url))
                     logger.info(f"Saved script: {file_path}")
@@ -479,7 +476,6 @@ def download_and_save_scripts(selected_seasons=None, force_download=False):
     
     # Generate summary report
     logger.info(f"Download complete. {scripts_downloaded} scripts downloaded, {scripts_failed} failed.")
-    
     # Create a summary file
     summary_file = OUTPUT_DIR / "download_summary.txt"
     with open(summary_file, 'w', encoding='utf-8') as f:
@@ -594,7 +590,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     print("Starting Seinfeld Scripts Downloader...")
-    
     if args.list:
         list_available_seasons()
         exit(0)
@@ -626,3 +621,25 @@ if __name__ == "__main__":
         logger.info("Script download completed successfully")
     else:
         logger.error("Script download failed but some scripts were downloaded")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -12,7 +12,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
 # Load environment variables from .env
 load_dotenv()
 # Debug log for environment variables
@@ -23,6 +22,7 @@ sys.path.insert(0, str(root_dir))
 #import our modules
 from scripts.find_episode import find_episode
 from scripts.find_episode_by_keywords import find_episodes_by_keywords
+from scripts.get_imdb_rating import get_rating # Import get_rating
 
 #init flask app
 app = Flask(__name__, static_folder='../frontend')
@@ -43,7 +43,6 @@ def search_episode():
         
         if not description:
             return jsonify({'error': 'missing description'}), 400
-        
         # Add a max length for the description to prevent token limit issues
         if len(description) > 500:
             description = description[:500]
@@ -68,20 +67,48 @@ def search_episode():
             'error': str(e),
             'message': 'failed to process request'
         }), 500
- 
 @app.route('/api/test', methods=['GET'])
 def test_default_episode():
-    """Test endpoint using a fixed scene description"""
-    # default scene description for recursive testing
-    description = "the one where jerry looses his car"
-    # invoke the finder with test_mode=True to avoid token limits
-    result = find_episode(description, test_mode=True)
-    if result is None:
-        return jsonify({'error': 'test failed to find episode'}), 500
+    """Test endpoint to directly check get_imdb_rating functionality."""
+    test_season = 4
+    test_episode_identifier = "The Contest"  # Can be an episode number (e.g., 11) or title
+
+    logger.info(f"Executing /api/test for S{test_season}E{test_episode_identifier} using get_rating directly.")
+    
+    imdb_data = get_rating(test_season, test_episode_identifier)
+    
+    if imdb_data is None:
+        logger.error(f"/api/test: get_rating returned None for S{test_season}E{test_episode_identifier}.")
+        return jsonify({
+            'success': False,
+            'test_parameters': {'season': test_season, 'episode_identifier': test_episode_identifier},
+            'message': 'IMDb data fetching failed: get_rating returned None. Check server logs for get_imdb_rating.py errors.',
+            'imdb_data': None
+        }), 500
+
+    # Check for completeness of critical IMDb data
+    rating_ok = imdb_data.get('rating') not in [None, 'N/A', '']
+    image_ok = imdb_data.get('image_url') not in [None, '']
+    imdb_url_ok = imdb_data.get('imdb_url') not in [None, '']
+    
+    status_message = "IMDb data retrieved."
+    is_complete = True
+
+    if not (rating_ok and image_ok and imdb_url_ok):
+        status_message = "IMDb data retrieved but appears incomplete (missing/empty rating, image_url, or imdb_url). `get_imdb_rating.py` may need updates."
+        is_complete = False
+        logger.warning(f"/api/test: IMDb data for S{test_season}E{test_episode_identifier} is incomplete. Rating OK: {rating_ok}, Image OK: {image_ok}, IMDb URL OK: {imdb_url_ok}")
+    else:
+        status_message = "IMDb data retrieved successfully and appears complete."
+        logger.info(f"/api/test: IMDb data for S{test_season}E{test_episode_identifier} appears complete.")
+
+    logger.debug(f"/api/test: Full IMDb data for S{test_season}E{test_episode_identifier}: {imdb_data}")
+
     return jsonify({
-        'success': True,
-        'description': description,
-        'results': result
+        'success': is_complete,
+        'test_parameters': {'season': test_season, 'episode_identifier': test_episode_identifier},
+        'message': status_message,
+        'imdb_data': imdb_data
     })
 
 @app.route('/api/keyword-search', methods=['POST'])
@@ -98,7 +125,6 @@ def search_by_keywords():
         # Add a max length for keywords to prevent processing issues
         if len(keywords) > 200:
             keywords = keywords[:200]
-            
         # Search episodes by keywords
         results = find_episodes_by_keywords(keywords, max_results)
         
@@ -110,7 +136,6 @@ def search_by_keywords():
             
         # Format the results into a single string to match the existing API format
         formatted_results = "\n\n".join(results)
-        
         # Log success for monitoring
         logger.info(f"Successfully found episodes for keywords: {keywords[:50]}...")
         
@@ -129,6 +154,37 @@ def search_by_keywords():
 if __name__ == '__main__':
     #run in debug mode for dev
     app.run(debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

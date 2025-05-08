@@ -244,7 +244,6 @@ def try_common_variations():
         # Try with episode prefix
         variations.append(f"episode-{short_name.lower().replace(' ', '-')}.htm")
         variations.append(f"episode-{short_name.lower().replace(' ', '-')}.html")
-        
         # Special cases
         if episode_name == "The Junior Mint":
             variations.append("TheJuniorMint.htm")
@@ -368,7 +367,6 @@ def try_additional_names():
                 # Try standard naming format
                 url1 = urllib.parse.urljoin(BASE_URL, f"The{alt_short}.htm")
                 url2 = urllib.parse.urljoin(BASE_URL, f"The{alt_short}.html")
-                
                 # Check first URL
                 html_content = get_page_content(url1)
                 if html_content:
@@ -429,7 +427,6 @@ def main():
     
     # If no specific methods selected, run all
     run_all = args.all or not (args.find_links or args.alpha_index or args.variations or args.alt_names)
-    
     if run_all or args.find_links:
         find_episode_links()
     
@@ -438,7 +435,6 @@ def main():
     
     if run_all or args.variations:
         try_common_variations()
-        
     if run_all or args.alt_names:
         try_additional_names()
     
@@ -446,3 +442,22 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

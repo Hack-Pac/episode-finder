@@ -12,7 +12,6 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 import urllib.parse
 from tqdm import tqdm
-
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -166,14 +165,12 @@ def extract_script_content(html_content):
     
     # Clean up the script content
     script_content = re.sub(r'\n{3,}', '\n\n', script_content)  # Remove excessive newlines
-    
     return script_content.strip()
 
 def download_and_save_scripts():
     """Main function to download and organize scripts"""
     # Create the base output directory
     create_directory(OUTPUT_DIR)
-    
     # Get the index page with all script links
     logger.info(f"Fetching script index from {SCRIPTS_INDEX_URL}")
     index_html = get_page_content(SCRIPTS_INDEX_URL)
@@ -234,7 +231,6 @@ def download_and_save_scripts():
                         scripts_failed += 1
                         pbar.update(1)
                         continue
-                    
                     # Extract script text
                     script_content = extract_script_content(html_content)
                     
@@ -261,3 +257,20 @@ if __name__ == "__main__":
         logger.info("Script download completed successfully")
     else:
         logger.error("Script download failed")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -2,7 +2,6 @@
 """
 A comprehensive script to verify and list all available Seinfeld episodes on seinfeldscripts.com
 """
-
 import os
 import requests
 from pathlib import Path
@@ -13,7 +12,6 @@ from bs4 import BeautifulSoup
 # Constants
 BASE_URL = "https://www.seinfeldscripts.com/"
 OUTPUT_DIR = Path("data/scripts")
-
 def check_if_url_exists(url):
     """Check if a URL exists without downloading the whole page"""
     headers = {
@@ -98,10 +96,8 @@ def check_final_episode_list():
                     print(f"✓ {season} - {episode['title']} - {url}")
                 else:
                     print(f"× {season} - {episode['title']} - {url}")
-                
                 # Be nice to the server
                 time.sleep(0.5)
-            
             results[season].append(episode_results)
     
     # Save results
@@ -118,7 +114,6 @@ def check_final_episode_list():
             f.write(f"{season}:\n")
             for episode in episodes:
                 working_urls = [url["url"] for url in episode["urls_checked"] if url["exists"]]
-                
                 if working_urls:
                     first_working = working_urls[0]
                     f.write(f"  ✓ {episode['title']}: {first_working}\n")
@@ -137,3 +132,31 @@ if __name__ == "__main__":
     print("Starting URL verification process...")
     check_final_episode_list()
     print("Done!")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

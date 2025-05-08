@@ -73,7 +73,6 @@ def find_all_script_links():
     for a_tag in soup.find_all('a'):
         href = a_tag.get('href')
         text = a_tag.get_text().strip()
-        
         if href and not href.startswith(('http://', 'https://', 'mailto:')):
             # Make URL absolute
             full_url = urljoin(BASE_URL, href)
@@ -152,3 +151,19 @@ if __name__ == "__main__":
                 print(f"- {alt['title']}: {alt['url']}")
         else:
             print("No alternatives found")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

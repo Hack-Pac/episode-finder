@@ -216,7 +216,6 @@ EPISODES = [
         ("TheFinale2.htm", "The Finale (Part 2)")
     ])
 ]
-
 def sanitize_filename(filename):
     """Convert a string to a valid filename"""
     # Replace invalid characters with underscores
@@ -413,7 +412,6 @@ def download_and_save_scripts(selected_seasons=None, force_download=False):
                 # Use a random delay between 0.5 and 2 seconds to avoid detection
                 sleep_time = DELAY * (0.5 + random.random() * 1.5)  # Random between 0.5*DELAY and 2*DELAY
                 time.sleep(sleep_time)
-                
                 try:
                     url = urllib.parse.urljoin(BASE_URL, script_file.strip())
                     
@@ -548,3 +546,18 @@ if __name__ == "__main__":
         logger.info("Script download completed successfully")
     else:
         logger.error("Script download failed")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
