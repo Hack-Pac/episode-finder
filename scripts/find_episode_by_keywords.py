@@ -162,30 +162,36 @@ def find_episodes_by_keywords(keywords_str, max_results=5):
         key=lambda x: (x["matched_keywords"], x["score"]),
         reverse=True
     )
-    top_results = sorted_results[:max_results]
+    
     formatted_results = []
-    for result in top_results:
-        episode_key = result["episode"]
+    # Only process the #1 result for IMDb lookup if sorted_results is not empty
+    if sorted_results:
+        top_result = sorted_results[0] # Get the single best match
+        episode_key = top_result["episode"]
         match = re.match(r"Season (\d+): (.*)", episode_key)
         if match:
             season_num = match.group(1)
             episode_name = match.group(2)
+            rating_info = None # Initialize rating_info
             try:
                 rating_info = get_rating(season_num, episode_name)
                 if not rating_info:
+                    # Attempt to get rating with a cleaned name if the first try fails
                     base_name = episode_name.split('(')[0].strip()
                     if base_name != episode_name:
                         rating_info = get_rating(season_num, base_name)
             except Exception as e:
-                logger.debug(f"Error fetching rating: {e}")
-                rating_info = None
+                logger.debug(f"Error fetching rating for {episode_key}: {e}")
+                # rating_info remains None or its last state
+            
             entry = f"Season {season_num} Episode: {episode_name}"
-            matched_count = result["matched_keywords"]
-            total_count = result["total_keywords"]
-            coverage = result["keywords_coverage"]
+            matched_count = top_result["matched_keywords"]
+            total_count = top_result["total_keywords"]
+            coverage = top_result["keywords_coverage"]
             entry += f"\nMatched {matched_count}/{total_count} keywords ({coverage} coverage)"
-            keyword_info = ", ".join([f"{k} ({v})" for k, v in result["keyword_counts"].items()])
+            keyword_info = ", ".join([f"{k} ({v})" for k, v in top_result["keyword_counts"].items()])
             entry += f"\nKeywords found: {keyword_info}"
+
             if rating_info:
                 if "rating" in rating_info and "votes" in rating_info:
                     entry += f"\nIMDb Rating: {rating_info['rating']}/10 ({rating_info['votes']} votes)"
@@ -198,6 +204,13 @@ def find_episodes_by_keywords(keywords_str, max_results=5):
                 if "imdb_url" in rating_info and rating_info["imdb_url"]:
                     entry += f"\nIMDb URL: {rating_info['imdb_url']}"
             formatted_results.append(entry)
+        
+        # If you still want to return a list of top N results (without further IMDb lookups for N>1):
+        # You can adapt the loop here to format the other top_results (sorted_results[1:max_results])
+        # but without calling get_rating for them.
+        # For now, it only returns the #1 result with its IMDb details.
+        # If no episodes were found by keywords, formatted_results will be empty.
+
     return formatted_results
 
 def main():

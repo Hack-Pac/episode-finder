@@ -95,7 +95,7 @@ Your response: [/INST]"""
                 stop=["[INST]", "INSTRUCTIONS:", "Your response:"],
             )
             # Extract response text
-            if output and 'output' in output and output['output'] and output['output']['choices']:
+            if output and 'output' in output and output['output']['choices']:
                 text = output['output']['choices'][0]['text'].strip()
                 if text != "No matching episodes found.":
                     all_matches.append(text)
@@ -111,14 +111,21 @@ Your response: [/INST]"""
             #look for patterns like "Season X Episode Y" or "SxEY"
             ep_matches = re.finditer(r'(?:Season\s*(\d+).*?Episode\s*(\d+)|S(\d+)E(\d+))', text)
             enhanced_results = []
-            for match in ep_matches:
-                season = match.group(1) or match.group(3)
-                episode = match.group(2) or match.group(4)
+            
+            # Get only the first episode match from the LLM's output
+            first_episode_match = next(ep_matches, None)
+
+            if first_episode_match:
+                season = first_episode_match.group(1) or first_episode_match.group(3)
+                episode = first_episode_match.group(2) or first_episode_match.group(4)
+                
                 if season and episode:
-                    #get rating info
+                    # Attempt to get rating info ONLY for this first identified episode
                     rating_info = get_rating(int(season), int(episode))
+                    
                     if rating_info:
-                        result_text = text # Start with the original matched text (Season X Episode Y: Title)
+                        # Use the LLM's original response text as the base for the result
+                        result_text = text 
                         result_text += f"\nIMDb Rating: {rating_info.get('rating', 'N/A')}/10 ({rating_info.get('votes', 'N/A')} votes)"
                         result_text += f"\nOriginal Air Date: {rating_info.get('air_date', 'N/A')}"
                         if rating_info.get('image_url'):
@@ -126,7 +133,7 @@ Your response: [/INST]"""
                         if rating_info.get('imdb_url'):
                             result_text += f"\nIMDb URL: {rating_info['imdb_url']}"
                         enhanced_results.append(result_text)
-                        break  #just enhance the first match for now
+            
             return enhanced_results[0] if enhanced_results else text
         return text
     except Exception as e:
