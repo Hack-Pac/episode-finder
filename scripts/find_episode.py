@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 import json
+import hashlib
+from collections import defaultdict
 #add project root to path if running as script
 if __name__ == "__main__":
     project_root = Path(__file__).parent.parent
@@ -20,8 +22,45 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+def get_cache_key(scene_description):
+    return hashlib.md5(scene_description.lower().strip().encode()).hexdigest()
+
+def load_cache():
+    cache_file = Path(__file__).parent.parent / "data" / "episode_cache.json"
+    if cache_file.exists():
+        try:
+            with open(cache_file, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_to_cache(scene_description, result):
+    cache_file = Path(__file__).parent.parent / "data" / "episode_cache.json"
+    cache = load_cache()
+    cache[get_cache_key(scene_description)] = result
+    
+    #ensure data directory exists
+    cache_file.parent.mkdir(exist_ok=True)
+    with open(cache_file, 'w') as f:
+        json.dump(cache, f)
+
+def prefilter_episodes(scene_description, episodes):
+    keywords = re.findall(r'\b\w+\b', scene_description.lower())
+    
+    #keyword filtering
+    scored_episodes = []
+    for episode in episodes:
+        score = sum(1 for keyword in keywords if keyword in episode.lower())
+        if score > 0:  # Only include episodes with at least 1 keyword match
+            scored_episodes.append((score, episode))
+    
+    #return top 25 episodes for AI processing
+    scored_episodes.sort(reverse=True)
+    return [ep for _, ep in scored_episodes[:25]]
+
 def load_descriptions():
-    """load scraped seinfeld descriptions"""
     try:
         # locate descriptions file relative to project root
         project_root = Path(__file__).parent.parent
@@ -42,22 +81,29 @@ def find_episode(scene_description, test_mode=False):
         test_mode (bool, optional): If True, skips descriptions to avoid token limit. Defaults to False.
     """
     try:
-        # Setup Together.ai
+        cache_key = get_cache_key(scene_description)
+        cache = load_cache()
+        
+        if cache_key in cache:
+            logger.info("Returning cached result")
+            return cache[cache_key]
+        
         api_key = os.getenv('TOGETHER_API_KEY')
         if not api_key or api_key == 'none':
             logger.error("TOGETHER_API_KEY not found in .env")
             return None
             
-        # Configure Together client
         logger.info("Configuring Together.ai API")
-        together.api_key = api_key        # For test mode, we'll use a direct approach without the full descriptions
+        
+        # For test mode, we'll use a direct approach without the full descriptions
         # to avoid token limit issues
         if test_mode:
             logger.info("Running in test mode - bypassing episode descriptions")
             # For test mode, return a mock result directly without API call
             if "jerry" in scene_description.lower() and "car" in scene_description.lower():
-                logger.info(f"TEST MODE: Returning mocked result for car-related query: {scene_description[:30]}...")
-                return "Season 3 Episode 22: The Parking Garage\nIMDb Rating: 8.8/10 (3241 votes)\nOriginal Air Date: October 30, 1991"
+                result = "Season 3 Episode 22: The Parking Garage\nIMDb Rating: 8.8/10 (3241 votes)\nOriginal Air Date: October 30, 1991"
+                save_to_cache(scene_description, result)
+                return result
             chunks = ["TEST_MODE_ACTIVE"]
         else:
             # Normal mode with full descriptions
@@ -66,46 +112,66 @@ def find_episode(scene_description, test_mode=False):
                 return None
             # Split descriptions into individual entries using blank lines (handles CRLF)
             episode_chunks = re.split(r'\r?\n\s*\r?\n', descriptions.strip())
-            # Reduce chunk size to single entry per prompt to stay well under token limit
-            chunk_size = 1
-            chunks = [episode_chunks[i] for i in range(0, len(episode_chunks), chunk_size)]
+            
+            # NEW: Prefilter episodes to reduce AI processing load
+            relevant_episodes = prefilter_episodes(scene_description, episode_chunks)
+            logger.info(f"Prefiltered to {len(relevant_episodes)} relevant episodes from {len(episode_chunks)} total")
+            
+            # Optimized batch processing - process 12 episodes per API call instead of 1
+            chunk_size = 12
+            chunks = [relevant_episodes[i:i + chunk_size] for i in range(0, len(relevant_episodes), chunk_size)]
         
         all_matches = []
-        for chunk in chunks:
+        for chunk_episodes in chunks:
+            if test_mode and chunk_episodes == ["TEST_MODE_ACTIVE"]:
+                break
+                
+            # Join multiple episodes into one prompt for batch processing
+            
             #craft prompt with Llama instruction format for this chunk
             prompt = f"""[INST] Task: Find matching Seinfeld episodes based on a scene description.
-EPISODE DESCRIPTIONS:
-{chunk}
-SCENE TO MATCH:
-{scene_description}
-INSTRUCTIONS:
-1. Return ONLY matching episode numbers and names
-2. If no matches found, respond: "No matching episodes found."
-3. Format matches as "Season X Episode Y: Title"
-4. No explanations or additional text
 
-Your response: [/INST]"""
-            # Generate content using Together's API
-            logger.info("Generating content for chunk")
+                EPISODE DESCRIPTIONS:
+                {chunk}
+
+                SCENE TO MATCH:
+                {scene_description}
+
+                INSTRUCTIONS:
+                1. Return ONLY the BEST 1-2 matching episodes
+                2. Format matches as "Season X Episode Y: Title"
+                3. If no good matches, respond: "No matching episodes found."
+                4. No explanations or additional text
+
+                Your response: [/INST]"""
+            logger.info(f"Generating content for batch of {len(chunk_episodes)} episodes")
             output = together.Complete.create(
                 prompt=prompt,
-                model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-                max_tokens=256,
-                temperature=0.5,
+                model="meta-llama/Llama-3.1-8B-Instruct-Turbo",  # LEGACY: gemini
+                max_tokens=128,  # LEGACY: 256
+                temperature=0.5,  
                 stop=["[INST]", "INSTRUCTIONS:", "Your response:"],
             )
-            # Extract response text
+            
+            #response
             if output and 'output' in output and output['output']['choices']:
                 text = output['output']['choices'][0]['text'].strip()
                 if text != "No matching episodes found.":
+                    # Check for high confidence indicators for early exit
+                    confidence_indicators = ["exact", "clearly", "definitely", "obviously", "perfect match"]
+                    if any(indicator in text.lower() for indicator in confidence_indicators):
+                        all_matches.append(text)
+                        break
                     all_matches.append(text)
-                    # stop after first matching chunk to reduce total token usage
+                    # stop after first matching batch to reduce total token usage
                     break
+        
         # Combine results
         if not all_matches:
             text = "No matching episodes found."
         else:
             text = "\n".join(all_matches)
+        
         #try to parse season and episode numbers from response
         if text != "No matching episodes found.":
             #look for patterns like "Season X Episode Y" or "SxEY"
@@ -134,8 +200,14 @@ Your response: [/INST]"""
                             result_text += f"\nIMDb URL: {rating_info['imdb_url']}"
                         enhanced_results.append(result_text)
             
-            return enhanced_results[0] if enhanced_results else text
-        return text
+            final_result = enhanced_results[0] if enhanced_results else text
+        else:
+            final_result = text
+        
+        # Save result to cache before returning
+        save_to_cache(scene_description, final_result)
+        return final_result
+        
     except Exception as e:
         logger.error(f"error finding episode: {e}")
         return None
@@ -148,111 +220,3 @@ if __name__ == "__main__":
         print(result)
     else:
         print("\nFailed to find episodes. Check the logs for details.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
