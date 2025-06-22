@@ -38,7 +38,6 @@ def load_cache():
 
 def save_to_cache(scene_description, result):
     cache_file = Path(__file__).parent.parent / "data" / "episode_cache.json"
-    cache = load_cache()
     cache[get_cache_key(scene_description)] = result
     
     #ensure data directory exists
@@ -52,8 +51,7 @@ def prefilter_episodes(scene_description, episodes):
     #keyword filtering
     scored_episodes = []
     for episode in episodes:
-        score = sum(1 for keyword in keywords if keyword in episode.lower())
-        if score > 0:  # Only include episodes with at least 1 keyword match
+        if score > 0: 
             scored_episodes.append((score, episode))
     
     #return top 25 episodes for AI processing
@@ -95,29 +93,23 @@ def find_episode(scene_description, test_mode=False):
             
         logger.info("Configuring Together.ai API")
         
-        # For test mode, we'll use a direct approach without the full descriptions
-        # to avoid token limit issues
+        # TEST DEBUG
         if test_mode:
             logger.info("Running in test mode - bypassing episode descriptions")
             # For test mode, return a mock result directly without API call
             if "jerry" in scene_description.lower() and "car" in scene_description.lower():
                 result = "Season 3 Episode 22: The Parking Garage\nIMDb Rating: 8.8/10 (3241 votes)\nOriginal Air Date: October 30, 1991"
-                save_to_cache(scene_description, result)
                 return result
             chunks = ["TEST_MODE_ACTIVE"]
         else:
-            # Normal mode with full descriptions
             descriptions = load_descriptions()
             if not descriptions:
                 return None
-            # Split descriptions into individual entries using blank lines (handles CRLF)
             episode_chunks = re.split(r'\r?\n\s*\r?\n', descriptions.strip())
             
-            # NEW: Prefilter episodes to reduce AI processing load
             relevant_episodes = prefilter_episodes(scene_description, episode_chunks)
             logger.info(f"Prefiltered to {len(relevant_episodes)} relevant episodes from {len(episode_chunks)} total")
             
-            # Optimized batch processing - process 12 episodes per API call instead of 1
             chunk_size = 12
             chunks = [relevant_episodes[i:i + chunk_size] for i in range(0, len(relevant_episodes), chunk_size)]
         
@@ -125,10 +117,7 @@ def find_episode(scene_description, test_mode=False):
         for chunk_episodes in chunks:
             if test_mode and chunk_episodes == ["TEST_MODE_ACTIVE"]:
                 break
-                
-            # Join multiple episodes into one prompt for batch processing
-            
-            #craft prompt with Llama instruction format for this chunk
+                            
             prompt = f"""[INST] Task: Find matching Seinfeld episodes based on a scene description.
 
                 EPISODE DESCRIPTIONS:
@@ -178,7 +167,6 @@ def find_episode(scene_description, test_mode=False):
             ep_matches = re.finditer(r'(?:Season\s*(\d+).*?Episode\s*(\d+)|S(\d+)E(\d+))', text)
             enhanced_results = []
             
-            # Get only the first episode match from the LLM's output
             first_episode_match = next(ep_matches, None)
 
             if first_episode_match:
@@ -186,11 +174,9 @@ def find_episode(scene_description, test_mode=False):
                 episode = first_episode_match.group(2) or first_episode_match.group(4)
                 
                 if season and episode:
-                    # Attempt to get rating info ONLY for this first identified episode
                     rating_info = get_rating(int(season), int(episode))
                     
                     if rating_info:
-                        # Use the LLM's original response text as the base for the result
                         result_text = text 
                         result_text += f"\nIMDb Rating: {rating_info.get('rating', 'N/A')}/10 ({rating_info.get('votes', 'N/A')} votes)"
                         result_text += f"\nOriginal Air Date: {rating_info.get('air_date', 'N/A')}"
@@ -204,8 +190,6 @@ def find_episode(scene_description, test_mode=False):
         else:
             final_result = text
         
-        # Save result to cache before returning
-        save_to_cache(scene_description, final_result)
         return final_result
         
     except Exception as e:
@@ -217,6 +201,5 @@ if __name__ == "__main__":
     result = find_episode(scene)
     if result:
         print("\nMatching Episode:")
-        print(result)
     else:
         print("\nFailed to find episodes. Check the logs for details.")
