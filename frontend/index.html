@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seinfeld Episode Finder</title>
-    <link href="./styles.css" rel="stylesheet">
+    <title>Seinfeld Episode Finder</title>    <link href="./styles.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="./main.js" defer></script>
 </head>
 <body class="min-h-screen theme-transition">
     <!-- Background -->
@@ -40,12 +40,12 @@
             </div>
 
             <!-- Search Tabs -->
-            <div class="max-w-4xl mx-auto">
-                <div class="flex mb-6 glass-effect rounded-lg p-1">
+            <div class="max-w-4xl mx-auto">                <div class="flex mb-6 glass-effect rounded-lg p-1">
                     <button id="sceneTab" class="flex-1 py-3 px-4 rounded-md text-white font-medium theme-transition bg-white bg-opacity-20">
                         <i class="fas fa-brain mr-2"></i>
                         Scene Description
                     </button>
+                    <button id="keywordTab" class="flex-1 py-3 px-4 rounded-md text-white font-medium theme-transition hover:bg-white hover:bg-opacity-10">
                         <i class="fas fa-tags mr-2"></i>
                         Keyword Search
                     </button>
@@ -54,13 +54,12 @@
                 <!-- Scene Search Tab -->
                 <div id="sceneSearch" class="glass-effect rounded-xl p-8">
                     <form id="sceneForm">
-                        <div class="mb-6">
-                            <label for="sceneDescription" class="block text-white text-lg font-medium mb-3">
+                        <div class="mb-6">                            <label for="description" class="block text-white text-lg font-medium mb-3">
                                 <i class="fas fa-comment-dots mr-2"></i>
                                 Describe the scene you remember:
                             </label>
                             <textarea 
-                                id="sceneDescription" 
+                                id="description" 
                                 class="w-full p-4 border-2 border-white border-opacity-30 rounded-lg bg-white bg-opacity-10 text-white placeholder-white placeholder-opacity-70 focus:border-opacity-60 focus:outline-none theme-transition"
                                 rows="4" 
                                 placeholder="e.g., Jerry pretends to be interested in a woman just to get a marble rye bread from her..."
@@ -82,11 +81,12 @@
                     </form>
                 </div>
 
-                <!-- Keyword Search Tab -->
-                <div id="keywordSearch" class="glass-effect rounded-xl p-8 hidden">
+                <!-- Keyword Search Tab -->                <div id="keywordSearch" class="glass-effect rounded-xl p-8 hidden">
                     <form id="keywordForm">
+                        <div class="mb-6">
                             <label for="keywords" class="block text-white text-lg font-medium mb-3">
                                 <i class="fas fa-search mr-2"></i>
+                                Enter keywords:
                             </label>
                             <input 
                                 type="text" 
@@ -94,6 +94,7 @@
                                 class="w-full p-4 border-2 border-white border-opacity-30 rounded-lg bg-white bg-opacity-10 text-white placeholder-white placeholder-opacity-70 focus:border-opacity-60 focus:outline-none theme-transition"
                                 placeholder="e.g., soup nazi, marble rye, parking garage..."
                                 maxlength="200"
+                            />
                             <div class="mt-3">
                                 <label for="maxResults" class="block text-white text-sm font-medium mb-2">Max Results:</label>
                                 <select id="maxResults" class="p-2 border border-white border-opacity-30 rounded bg-white bg-opacity-10 text-white">
@@ -216,14 +217,12 @@
 
         keywordTab.addEventListener('click', () => {
             switchTab(keywordTab, keywordSearch, sceneTab, sceneSearch);
-        });
-
-        // Character counter
-        const sceneDescription = document.getElementById('sceneDescription');
+        });        // Character counter
+        const description = document.getElementById('description');
         const charCount = document.getElementById('charCount');
 
-        sceneDescription.addEventListener('input', () => {
-            const count = sceneDescription.value.length;
+        description.addEventListener('input', () => {
+            const count = description.value.length;
             charCount.textContent = `${count}/500 characters`;
             
             if (count > 450) {
@@ -311,11 +310,9 @@
             } catch (err) {
                 showError('Network error. Please try again.');
             }
-        }
-
-        sceneForm.addEventListener('submit', async (e) => {
+        }        sceneForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const description = sceneDescription.value.trim();
+            const description = document.getElementById('description').value.trim();
             
             if (!description) {
                 showError('Please enter a scene description');

@@ -1,6 +1,6 @@
 import re
 import os
-import requests  # Use requests instead of together library
+import together
 import logging
 import hashlib
 import json
@@ -126,69 +126,40 @@ def find_episode(scene_description, test_mode=False):
                             
             prompt = f"""[INST] Task: Find matching Seinfeld episodes based on a scene description.
 
-EPISODE DESCRIPTIONS:
-{chunk}
+                EPISODE DESCRIPTIONS:
+                {chunk}
 
-SCENE TO MATCH:
-{scene_description}
+                SCENE TO MATCH:
+                {scene_description}
 
-INSTRUCTIONS:
-1. Return ONLY the BEST 1-2 matching episodes
-2. Format matches as "Season X Episode Y: Title"
-3. If no good matches, respond: "No matching episodes found."
-4. No explanations or additional text
+                INSTRUCTIONS:
+                1. Return ONLY the BEST 1-2 matching episodes
+                2. Format matches as "Season X Episode Y: Title"
+                3. If no good matches, respond: "No matching episodes found."
+                4. No explanations or additional text
 
-Your response: [/INST]"""
-
+                Your response: [/INST]"""
             logger.info(f"Generating content for batch of {len(chunk_episodes)} episodes")
+            output = together.Complete.create(
+                prompt=prompt,
+                model="meta-llama/Llama-3.1-8B-Instruct-Turbo",
+                max_tokens=128,
+                temperature=0.3,
+                stop=["[INST]", "INSTRUCTIONS:", "Your response:"],
+            )
             
-            # Use the current Together.ai API format
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            data = {
-                "model": "meta-llama/Llama-2-7b-chat-hf",
-                "prompt": prompt,
-                "max_tokens": 128,
-                "temperature": 0.3,
-                "top_p": 0.7,
-                "stop": ["[INST]", "INSTRUCTIONS:", "Your response:"]
-            }
-            
-            try:
-                response = requests.post(
-                    "https://api.together.xyz/v1/completions",
-                    headers=headers,
-                    json=data,
-                    timeout=30
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    if result.get('choices') and len(result['choices']) > 0:
-                        text = result['choices'][0]['text'].strip()
-                    else:
-                        text = "No matching episodes found."
-                else:
-                    logger.error(f"API request failed with status {response.status_code}: {response.text}")
-                    text = "No matching episodes found."
-                    
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Request failed: {e}")
-                text = "No matching episodes found."
-            
-            # Process the response
-            if text != "No matching episodes found.":
-                # Check for high confidence indicators for early exit
-                confidence_indicators = ["exact", "clearly", "definitely", "obviously"]
-                if any(indicator in text.lower() for indicator in confidence_indicators):
-                    logger.info("High confidence match found, stopping search")
+            #response
+            if output and 'output' in output and output['output']['choices']:
+                text = output['output']['choices'][0]['text'].strip()
+                if text != "No matching episodes found.":
+                    # Check for high confidence indicators for early exit
+                    confidence_indicators = ["exact", "clearly", "definitely", "obviously"]
+                    if any(indicator in text.lower() for indicator in confidence_indicators):
+                        logger.info("High confidence match found, stopping search")
+                        all_matches.append(text)
+                        break
                     all_matches.append(text)
                     break
-                all_matches.append(text)
-                break
         
         # Combine results
         if not all_matches:
