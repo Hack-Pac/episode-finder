@@ -13,24 +13,24 @@ from collections import Counter
 import string
 from tqdm import tqdm
 
-# Add project root to path if running as script
+#add project root to path if running as script
 if __name__ == "__main__":
     project_root = Path(__file__).parent.parent
     sys.path.insert(0, str(project_root))
 
-# Import IMDb rating function
+#import imdb rating function
 from scripts.get_imdb_rating import get_rating
 
-# Setup logging
+#setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Constants
+#constants
 SCRIPTS_DIR = Path(__file__).parent.parent / "data" / "scripts"
-TOP_RESULTS = 5  # Number of top results to return
+TOP_RESULTS = 5
 
 def load_script_files():
     """
@@ -38,12 +38,11 @@ def load_script_files():
     Returns a dictionary with episode info as keys and file paths as values
     """
     script_files = {}
-    # Check if scripts directory exists
+    #check if scripts directory exists
     if not SCRIPTS_DIR.exists():
         logger.error(f"Scripts directory not found: {SCRIPTS_DIR}")
         return script_files
-        
-    # Walk through all season directories
+          #walk through all season directories
     for season_dir in SCRIPTS_DIR.glob("Season *"):
         if not season_dir.is_dir():
             continue
@@ -51,10 +50,10 @@ def load_script_files():
         season_name = season_dir.name
         logger.info(f"Loading scripts from {season_name}")
         
-        # Process each script file in this season
+        #process each script file in this season
         for script_file in season_dir.glob("*.txt"):
             try:
-                # Extract episode info from filename
+                #extract episode info from filename
                 episode_name = script_file.stem
                 episode_key = f"{season_name}: {episode_name}"
                 script_files[episode_key] = script_file
@@ -68,12 +67,12 @@ def preprocess_text(text):
     """
     Preprocess text: lowercase, remove punctuation, extra whitespace
     """
-    # Convert to lowercase
+    #convert to lowercase
     text = text.lower()
-    # Remove punctuation
+    #remove punctuation
     translator = str.maketrans('', '', string.punctuation)
     text = text.translate(translator)
-    # Remove extra whitespace
+    #remove extra whitespace
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -85,10 +84,10 @@ def parse_keywords(keywords_str):
     """
     Parse keywords string into a list of individual keywords
     """
-    # Split by commas and spaces
+    #split by commas and spaces
     keywords = re.split(r'[,\s]+', keywords_str.lower())
     
-    # Remove empty strings and strip whitespace
+    #remove empty strings and strip whitespace
     keywords = [k.strip() for k in keywords if k.strip()]
     
     return keywords
@@ -104,17 +103,17 @@ def find_episodes_by_keywords(keywords_str, max_results=5):
     Returns:
         list: List of dictionaries with episode info and scores
     """
-    # Parse and preprocess keywords
+    #parse and preprocess keywords
     keywords = parse_keywords(keywords_str)
     if not keywords:
         logger.warning("No valid keywords provided")
         return []
     logger.info(f"Searching for keywords: {', '.join(keywords)}")
 
-    # Tokenize keywords for set operations
+    #tokenize keywords for set operations
     keyword_set = set(keywords)
 
-    # Load script files
+    #load script files
     script_files = load_script_files()
     if not script_files:
         logger.error("No script files found")

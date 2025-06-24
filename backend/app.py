@@ -6,27 +6,26 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Setup logging
+#setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-# Load environment variables from .env
+#load env vars
 load_dotenv()
-# Debug log for environment variables
 print("Debug: TOGETHER_API_KEY present:", bool(os.getenv('TOGETHER_API_KEY')))
 #add project root to path
 root_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(root_dir))
-#import our modules
+#import modules
 from scripts.find_episode import find_episode
 from scripts.find_episode_by_keywords import find_episodes_by_keywords
-from scripts.get_imdb_rating import get_rating # Import get_rating
+from scripts.get_imdb_rating import get_rating
 
 #init flask app
 app = Flask(__name__, static_folder='../frontend')
-CORS(app) #enable cors for all routes
+CORS(app)
 #serve frontend
 @app.route('/')
 def serve_index():
@@ -39,30 +38,28 @@ def search_episode():
     try:
         data = request.json
         description = data.get('description')
-        test_mode = data.get('test_mode', False)  # Optional parameter to enable test mode
+        test_mode = data.get('test_mode', False)
         
         if not description:
             return jsonify({'error': 'missing description'}), 400
-        # Add a max length for the description to prevent token limit issues
+        #prevent token limit issues
         if len(description) > 500:
             description = description[:500]
-            
-        #use our specialized seinfeld finder
+        #find episode
         result = find_episode(description, test_mode=test_mode)
-        if result is None:
-            return jsonify({
+        if result is None:            return jsonify({
                 'error': 'failed to search episodes',
                 'message': 'check server logs for details'
-            }), 500
-            
-        #log success for monitoring
+            }), 500            
+        #log success
         logger.info(f"Successfully found episodes for scene: {description[:50]}...")
+        logger.info(f"Result being returned: {result}")
         return jsonify({
             'success': True,
             'results': result
         })
     except Exception as e:
-        #log the error in prod
+        #log error
         return jsonify({
             'error': str(e),
             'message': 'failed to process request'
@@ -71,7 +68,7 @@ def search_episode():
 def test_default_episode():
     """Test endpoint to directly check get_imdb_rating functionality."""
     test_season = 4
-    test_episode_identifier = "The Contest"  # Can be an episode number (e.g., 11) or title
+    test_episode_identifier = "The Contest"
 
     logger.info(f"Executing /api/test for S{test_season}E{test_episode_identifier} using get_rating directly.")
     
@@ -117,15 +114,15 @@ def search_by_keywords():
     try:
         data = request.json
         keywords = data.get('keywords')
-        max_results = data.get('maxResults', 5)  # Default to 5 results
+        max_results = data.get('maxResults', 5)
         
         if not keywords:
             return jsonify({'error': 'missing keywords'}), 400
             
-        # Add a max length for keywords to prevent processing issues
+        #prevent processing issues
         if len(keywords) > 200:
             keywords = keywords[:200]
-        # Search episodes by keywords
+        #search episodes
         results = find_episodes_by_keywords(keywords, max_results)
         
         if not results:
@@ -134,17 +131,16 @@ def search_by_keywords():
                 'results': "No episodes found matching your keywords."
             })
             
-        # Format the results into a single string to match the existing API format
+        #format results
         formatted_results = "\n\n".join(results)
-        # Log success for monitoring
+        #log success
         logger.info(f"Successfully found episodes for keywords: {keywords[:50]}...")
         
         return jsonify({
             'success': True,
             'results': formatted_results
         })
-    except Exception as e:
-        # Log the error
+    except Exception as e:        #log error
         logger.error(f"Error in keyword search: {str(e)}")
         return jsonify({
             'error': str(e),
@@ -152,80 +148,8 @@ def search_by_keywords():
         }), 500
 
 if __name__ == '__main__':
-    #run in debug mode for dev
+    #run in debug mode
     app.run(debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

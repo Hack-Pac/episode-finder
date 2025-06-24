@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import re
 import sys
@@ -9,16 +8,14 @@ from pathlib import Path
 import together
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Add project root to path if running as script
 if __name__ == "__main__":
     project_root = Path(__file__).parent.parent
     sys.path.insert(0, str(project_root))
+
 from scripts.get_imdb_rating import get_rating
 
-# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -38,64 +35,58 @@ def load_cache():
             return {}
     return {}
 
-def save_to_cache(scene_description, result):
+def save_to_cache(scene_description, result):    
     cache_file = Path(__file__).parent.parent / "data" / "episode_cache.json"
     cache = load_cache()
     cache[get_cache_key(scene_description)] = result
     
-    # Ensure data directory exists
+    #ensure data dir exists
     cache_file.parent.mkdir(exist_ok=True)
     with open(cache_file, 'w') as f:
         json.dump(cache, f)
 
 def prefilter_episodes(scene_description, episodes):
-    # Remove common stop words that don't help with episode matching
     stop_words = {'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them'}
     
-    # Extract meaningful keywords (longer than 2 chars, not stop words)
+    #extract keywords for filtering
     all_words = re.findall(r'\b\w+\b', scene_description.lower())
     keywords = [word for word in all_words if len(word) > 2 and word not in stop_words]
     
     logger.info(f"Extracted keywords for filtering: {keywords}")
     
-    # Keyword filtering with partial matching
     scored_episodes = []
     for episode in episodes:
         episode_lower = episode.lower()
         
-        # Score based on keyword matches (exact and partial)
+        #score based on keyword matches
         exact_matches = sum(1 for keyword in keywords if keyword in episode_lower)
         
-        # Bonus for partial matches (word stems)
+        #bonus for partial matches
         partial_matches = 0
         for keyword in keywords:
-            if len(keyword) > 4:  # Only do partial matching for longer words
-                keyword_stem = keyword[:4]  # Use first 4 characters as stem
+            if len(keyword) > 4:
+                keyword_stem = keyword[:4]
                 if keyword_stem in episode_lower and keyword not in episode_lower:
                     partial_matches += 0.5
         
         total_score = exact_matches + partial_matches
         
-        # Include episode if it has any matches OR if we don't have enough keywords to be selective
+        #include episode if it has matches or we need more episodes
         if total_score > 0 or len(keywords) < 3:
             scored_episodes.append((total_score, episode))
     
-    # Sort by score
     scored_episodes.sort(reverse=True)
     
-    # If we have very few matches, be more lenient and include more episodes
+    #be more lenient
     if len(scored_episodes) < 15:
         logger.warning(f"Only {len(scored_episodes)} episodes matched keywords. Including more episodes for broader search.")
-        # Include episodes with any word matches, even single letters
         for episode in episodes:
             episode_lower = episode.lower()
-            if not any(episode == scored_ep[1] for scored_ep in scored_episodes):  # Don't duplicate
-                # Check for any word presence
+            if not any(episode == scored_ep[1] for scored_ep in scored_episodes):
                 has_any_word = any(word in episode_lower for word in all_words if len(word) > 1)
                 if has_any_word:
-                    scored_episodes.append((0.1, episode))  # Low score but included
+                    scored_episodes.append((0.1, episode))
     
-    # Return top episodes (increase to 40 if we have few high-scoring matches)
     max_episodes = 40 if len([ep for score, ep in scored_episodes if score >= 1]) < 20 else 25
     
     logger.info(f"Returning top {min(max_episodes, len(scored_episodes))} episodes from {len(episodes)} total")
@@ -104,7 +95,6 @@ def prefilter_episodes(scene_description, episodes):
 def load_descriptions():
     """Load scraped seinfeld descriptions"""
     try:
-        # Locate descriptions file relative to project root
         project_root = Path(__file__).parent.parent
         descriptions_file = project_root / "data" / "seinfeld_descriptions.txt"
         if not descriptions_file.exists():
@@ -130,39 +120,31 @@ def find_episode(scene_description, test_mode=False):
         if cache_key in cache:
             logger.info("Returning cached result")
             return cache[cache_key]
-        
-        # Setup Together.ai
         api_key = os.getenv('TOGETHER_API_KEY')
         if not api_key or api_key == 'none':
             logger.error("TOGETHER_API_KEY not found in .env")
             return None
             
-        # Configure Together client
         logger.info("Configuring Together.ai API")
         together.api_key = api_key
         
-        # For test mode, we'll use a direct approach without the full descriptions
-        # to avoid token limit issues
+        #test mode
         if test_mode:
             logger.info("Running in test mode - bypassing episode descriptions")
-            # For test mode, return a mock result directly without API call
             if "jerry" in scene_description.lower() and "car" in scene_description.lower():
                 logger.info(f"TEST MODE: Returning mocked result for car-related query: {scene_description[:30]}...")
                 result = "Season 3 Episode 22: The Parking Garage\nIMDb Rating: 8.8/10 (3241 votes)\nOriginal Air Date: October 30, 1991"
                 return result
             chunks = ["TEST_MODE_ACTIVE"]
         else:
-            # Normal mode with full descriptions
             descriptions = load_descriptions()
             if not descriptions:
                 return None
-            # Split descriptions into individual entries using blank lines (handles CRLF)
             episode_chunks = re.split(r'\r?\n\s*\r?\n', descriptions.strip())
             
             relevant_episodes = prefilter_episodes(scene_description, episode_chunks)
             logger.info(f"Prefiltered to {len(relevant_episodes)} relevant episodes from {len(episode_chunks)} total")
-            
-            # Use batch processing for better efficiency
+              #use batch processing for efficiency
             chunk_size = 12
             chunks = [relevant_episodes[i:i + chunk_size] for i in range(0, len(relevant_episodes), chunk_size)]
         
@@ -171,10 +153,8 @@ def find_episode(scene_description, test_mode=False):
             if test_mode and chunk_episodes == ["TEST_MODE_ACTIVE"]:
                 break
             
-            # Join multiple episodes into one prompt for batch processing
             chunk = "\n\n".join(chunk_episodes)
             
-            # Craft prompt with Llama instruction format for this chunk
             prompt = f"""[INST] Task: Find matching Seinfeld episodes based on a scene description.
 EPISODE DESCRIPTIONS:
 {chunk}
@@ -190,7 +170,6 @@ INSTRUCTIONS:
             
             logger.info(f"Generating content for batch of {len(chunk_episodes)} episodes")
             
-            # Generate content using Together's API
             try:
                 output = together.Complete.create(
                     prompt=prompt,
@@ -200,18 +179,14 @@ INSTRUCTIONS:
                     stop=["[INST]", "INSTRUCTIONS:", "Your response:"],
                 )
                 
-                # Log raw output for debugging
+                #log raw output for debugging
                 logger.info(f"Raw API output: {output}")
-                
-                # Extract response text
                 if output and 'output' in output and output['output']['choices']:
                     raw_text = output['output']['choices'][0]['text'].strip()
                     logger.info(f"Raw extracted text: '{raw_text}'")
                     
-                    # Clean up the response by removing instruction artifacts
                     text = raw_text
                     
-                    # Remove common instruction artifacts that might appear in the response
                     cleanup_patterns = [
                         r'INSTRUCTIONS:.*?(?=Season|\n\n|$)',
                         r'Your response:.*?(?=Season|\n\n|$)',
@@ -219,7 +194,7 @@ INSTRUCTIONS:
                         r'Task: Find matching.*?(?=Season|\n\n|$)',
                         r'EPISODE DESCRIPTIONS:.*?(?=Season|\n\n|$)',
                         r'SCENE TO MATCH:.*?(?=Season|\n\n|$)',
-                        r'^\d+\.\s*.*?(?=Season|\n\n|$)',  # Remove numbered instructions
+                        r'^\d+\.\s*.*?(?=Season|\n\n|$)',
                         r'^Format matches.*?(?=Season|\n\n|$)',
                         r'^Return ONLY.*?(?=Season|\n\n|$)',
                         r'^If no.*?(?=Season|\n\n|$)',
@@ -229,10 +204,8 @@ INSTRUCTIONS:
                     for pattern in cleanup_patterns:
                         text = re.sub(pattern, '', text, flags=re.MULTILINE | re.DOTALL | re.IGNORECASE)
                     
-                    # Clean up extra whitespace and newlines
                     text = re.sub(r'\n\s*\n+', '\n', text).strip()
                     
-                    # If after cleanup we only have "No matching episodes found." or it's empty, treat as no match
                     if not text or text.lower().strip() == "no matching episodes found.":
                         text = "No matching episodes found."
                     
@@ -245,18 +218,14 @@ INSTRUCTIONS:
                 logger.error(f"Together API request failed: {e}")
                 text = "No matching episodes found."
             
-            # Process the response
             if text != "No matching episodes found.":
-                # Check for high confidence indicators for early exit
                 confidence_indicators = ["exact", "clearly", "definitely", "obviously"]
                 if any(indicator in text.lower() for indicator in confidence_indicators):
                     logger.info("High confidence match found, stopping search")
                     all_matches.append(text)
                     break
                 all_matches.append(text)
-                break
-        
-        # Combine results
+                break       
         logger.info(f"all_matches: {all_matches}")
         if not all_matches:
             final_result = "No matching episodes found."
@@ -264,7 +233,7 @@ INSTRUCTIONS:
             text = "\n".join(all_matches)
             logger.info(f"Combined text: '{text}'")
             
-            # If no matches found with prefiltered episodes, try again with all episodes
+            #if no matches with prefiltered episodes, try all episodes
             if text == "No matching episodes found." and not test_mode:
                 logger.info("No matches found with prefiltered episodes. Trying with all episodes...")
                 
@@ -273,12 +242,12 @@ INSTRUCTIONS:
                     all_episode_chunks = re.split(r'\r?\n\s*\r?\n', descriptions.strip())
                     logger.info(f"Trying with all {len(all_episode_chunks)} episodes")
                     
-                    # Use smaller chunks for all episodes to avoid token limits
+                    #use smaller chunks for all episodes
                     chunk_size = 8
                     all_chunks = [all_episode_chunks[i:i + chunk_size] for i in range(0, len(all_episode_chunks), chunk_size)]
                     
                     fallback_matches = []
-                    for chunk_episodes in all_chunks[:5]:  # Limit to first 5 chunks to avoid excessive API calls
+                    for chunk_episodes in all_chunks[:5]:  #limit to first 5 chunks
                         chunk = "\n\n".join(chunk_episodes)
                         
                         fallback_prompt = f"""[INST] Task: Find matching Seinfeld episodes based on a scene description.
@@ -305,8 +274,7 @@ INSTRUCTIONS:
                                 model="meta-llama/Llama-3.2-3B-Instruct-Turbo",
                                 max_tokens=128,
                                 temperature=0.3,
-                                top_p=0.7,
-                                stop=["[INST]", "INSTRUCTIONS:", "Your response:"],
+                                top_p=0.7,                                stop=["[INST]", "INSTRUCTIONS:", "Your response:"],
                             )
                             
                             logger.info(f"Fallback raw API output: {fallback_output}")
@@ -315,7 +283,6 @@ INSTRUCTIONS:
                                 raw_fallback_text = fallback_output['output']['choices'][0]['text'].strip()
                                 logger.info(f"Fallback raw extracted text: '{raw_fallback_text}'")
                                 
-                                # Apply same cleanup to fallback text
                                 fallback_text = raw_fallback_text
                                 
                                 cleanup_patterns = [
@@ -356,12 +323,11 @@ INSTRUCTIONS:
                     if fallback_matches:
                         text = "\n".join(fallback_matches)
                         logger.info(f"Fallback result: '{text}'")
-            
-            # Try to parse season and episode numbers from response
+              #try to parse season and episode numbers from response
             ep_matches = re.finditer(r'(?:Season\s*(\d+).*?Episode\s*(\d+)|S(\d+)E(\d+))', text)
             enhanced_results = []
             
-            # Get only the first episode match from the LLM's output
+            #get only the first episode match from the llm output
             first_episode_match = next(ep_matches, None)
             logger.info(f"Episode match found: {first_episode_match}")
             
@@ -370,11 +336,9 @@ INSTRUCTIONS:
                 episode = first_episode_match.group(2) or first_episode_match.group(4)
                 
                 if season and episode:
-                    # Attempt to get rating info ONLY for this first identified episode
                     rating_info = get_rating(int(season), int(episode))
                     
                     if rating_info:
-                        # Use the LLM's original response text as the base for the result
                         result_text = text 
                         result_text += f"\nIMDb Rating: {rating_info.get('rating', 'N/A')}/10 ({rating_info.get('votes', 'N/A')} votes)"
                         result_text += f"\nOriginal Air Date: {rating_info.get('air_date', 'N/A')}"
@@ -388,7 +352,6 @@ INSTRUCTIONS:
         
         logger.info(f"Final result before return: '{final_result}'")
         
-        # Save result to cache before returning
         if final_result:
             save_to_cache(scene_description, final_result)
         
@@ -399,7 +362,6 @@ INSTRUCTIONS:
         return None
 
 if __name__ == "__main__":
-    # Example usage
     scene = input("Describe the Seinfeld scene: ")
     result = find_episode(scene)
     if result:

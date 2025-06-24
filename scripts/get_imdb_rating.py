@@ -4,50 +4,46 @@ import re
 import json
 from typing import Optional, Dict, Union, Tuple
 import requests
-from bs4 import BeautifulSoup, Tag, NavigableString # Added Tag, NavigableString
+from bs4 import BeautifulSoup, Tag, NavigableString
 import urllib.parse
-from datetime import datetime # Added datetime for date parsing
-import sys # Ensure sys is imported
+from datetime import datetime
+import sys
 
-# Setup logging for this script specifically
+#setup logging for this script specifically
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG) # Set to DEBUG
-# If running standalone and no handlers are configured by a root logger (or this logger itself), add a default one.
+logger.setLevel(logging.DEBUG)
+#if running standalone and no handlers configured, add default one
 if not logger.handlers and not logging.getLogger().handlers:
     handler = logging.StreamHandler(sys.stdout)
-    # Using a more detailed formatter for debug purposes
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-elif not logger.handlers and logging.getLogger().handlers: # if root logger has handlers, our logger will use them.
-    # If root handlers exist, we assume they are configured adequately.
-    # The logger.setLevel(logging.DEBUG) above ensures this logger instance processes debug messages.
+elif not logger.handlers and logging.getLogger().handlers:
     pass
 
-# setup logging
+#setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Seinfeld IMDb ID
+#seinfeld imdb id
 SEINFELD_IMDB_ID = "tt0098904"
 
-# Define a function to parse air dates consistently
+#parse air dates consistently
 def parse_air_date(date_str: Optional[str]) -> str:
     logger.debug(f"parse_air_date received: '{date_str}'")
     if not date_str or date_str == "Unknown" or date_str.strip() == "":
         return "Unknown"
 
-    # Clean the date string
-    # Remove " aired" suffix, strip whitespace
+    #clean the date string
     cleaned_date_str = date_str.replace(" aired", "").strip()
-    # Remove ordinal indicators (st, nd, rd, th) e.g. "1st Nov 2020" -> "1 Nov 2020"
+    #remove ordinal indicators (st, nd, rd, th)
     cleaned_date_str = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", cleaned_date_str, flags=re.IGNORECASE)
-    # Remove "TV Episode • " prefix if present
+    #remove "TV Episode • " prefix if present
     cleaned_date_str = re.sub(r"^TV Episode\s*•\s*", "", cleaned_date_str, flags=re.IGNORECASE)
-    # Remove potential year in parentheses if it's part of the date string, e.g. "Nov 18, 1992 (1992)"
+    #remove potential year in parentheses
     cleaned_date_str = re.sub(r"\s*\(\d{4}\)$", "", cleaned_date_str).strip()
 
 
@@ -80,20 +76,15 @@ def parse_air_date(date_str: Optional[str]) -> str:
 
 HTML_PARSING_STRATEGIES = [
     {
-        "name": "JSON-LD",
-        "type": "json-ld",
-        # Configuration for JSON-LD parsing will be handled directly in the main logic
+        "name": "JSON-LD",        "type": "json-ld",
     },
     {
         "name": "H4AnchorSiblingStrategy",
         "type": "html",
         "use_sibling_navigation": True,
-        "episode_blocks_selector": "h4:has(a[href*='/title/tt'])", # Selects <h4> tags with a direct child <a> containing '/title/tt' in href
-        "title_selector": "a", # Title is within the <a> tag of the h4
-        "link_selector": "a",  # Link is also the <a> tag of the h4
-        # Lambdas for this strategy will be handled by the use_sibling_navigation logic
-        # Sibling navigation will look for text nodes for air_date/description and rating/votes,
-        # and an <img> tag for the image.
+        "episode_blocks_selector": "h4:has(a[href*='/title/tt'])",
+        "title_selector": "a",
+        "link_selector": "a",
         "extract_image_src": lambda img_tag: img_tag.get('src') if img_tag else None,
         "extract_rating": lambda rating_text_node: re.search(r'(\d+\.\d+|\d+)/10', rating_text_node.get_text(strip=True)).group(1) if rating_text_node and re.search(r'(\d+\.\d+|\d+)/10', rating_text_node.get_text(strip=True)) else 'N/A',
         "extract_votes": lambda votes_text_node: re.search(r'\((\d[\d,.]*K?)\)', votes_text_node.get_text(strip=True)).group(1).replace('K', '000').replace(',', '') if votes_text_node and re.search(r'\((\d[\d,.]*K?)\)', votes_text_node.get_text(strip=True)) else '0',
@@ -109,18 +100,17 @@ HTML_PARSING_STRATEGIES = [
         "rating_selector": "div[class*='EpisodeCard__ratings'] span[aria-label*='IMDb rating'], span.ipc-rating-star[class*='ipc-rating-star--base']",
         "extract_rating": lambda el: re.search(r'(\d\.\d|\d+)', el.text.strip()).group(1) if el and re.search(r'(\d\.\d|\d+)', el.text.strip()) else 'N/A',
         "votes_selector": "div[class*='EpisodeCard__ratings'] span[class*='EpisodeCard__voteCount'], span[class*='ipc-rating-star--voteCount']",
-        "extract_votes": lambda el: re.sub(r'[^\d]', '', el.text.strip('()')) if el else '0',
-        "air_date_selector": "div[class*='EpisodeCard__releaseDateText'], div[class*='EpisodeCard__metadata'] span.ipc-metadata-list-summary-item__li", # Check both possible locations
+        "extract_votes": lambda el: re.sub(r'[^\d]', '', el.text.strip('()')) if el else '0',        "air_date_selector": "div[class*='EpisodeCard__releaseDateText'], div[class*='EpisodeCard__metadata'] span.ipc-metadata-list-summary-item__li",
         "extract_air_date": lambda el: el.text.strip() if el else 'Unknown',
         "description_selector": "div[class*='EpisodeCard__plot'] div[class*='ipc-html-content-inner-div'], div.ipc-metadata-list-summary-item__plot-description",
         "extract_description": lambda el: el.text.strip() if el else 'N/A',
-        "episode_number_selector": "div[class*='EpisodeCard__episodeNumber'], div.ipc-title__text", # S.E format
+        "episode_number_selector": "div[class*='EpisodeCard__episodeNumber'], div.ipc-title__text",
         "extract_episode_number": lambda el: re.search(r'[Ee](\d+)', el.text.strip()).group(1) if el and re.search(r'[Ee](\d+)', el.text.strip()) else None,
     },
     {
         "name": "ClassicEpisodeList",
         "type": "html",
-        "episode_blocks_selector": "div.eplist-item, div.lister-item-content", # lister-item-content is more specific
+        "episode_blocks_selector": "div.eplist-item, div.lister-item-content",
         "title_selector": "a[itemprop='name']",
         "link_selector": "a[itemprop='name']",
         "image_selector": "img[itemprop='image']",
